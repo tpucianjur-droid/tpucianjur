@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Hash, Layers, Pencil, SquareUser } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Pencil } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { LinkPendingIcon } from "@/components/ui/link-status";
 import { cn } from "@/components/ui/cn";
@@ -12,22 +12,19 @@ import { DeleteGraveButton } from "./delete-grave-button";
 
 type Props = {
   items: GraveListItem[];
-  /** Nomor urut baris pertama (paginasi). */
-  startIndex: number;
   /** block_id => kode blok. */
   blockCodes: Record<string, string>;
-  /** URL daftar saat ini (filter & halaman) agar setelah Simpan/Verifikasi kembali ke konteks yang sama. */
+  /** URL daftar saat ini (filter & halaman) agar dari Detail/Edit kembali ke konteks yang sama. */
   listHref: string;
 };
 
 const HEIR_EMPTY = "Belum diisi";
 
 /**
- * Tabel di desktop lebar (xl), kartu ringkas di HP & tablet — tabel 9 kolom tidak dipaksa mengecil.
+ * Tabel di desktop lebar (xl), kartu ringkas di HP & tablet — tabel 8 kolom tidak dipaksa mengecil.
  * Nama/tanggal/ahli waris berwarna merah bila field tersebut perlu dicek.
  */
-export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
-  const editHref = (id: string) => `/admin/makam/${id}/edit?back=${encodeURIComponent(listHref)}`;
+export function GraveList({ items, blockCodes, listHref }: Props) {
   const blockOf = (grave: GraveListItem) => (grave.block_id ? (blockCodes[grave.block_id] ?? "—") : "—");
 
   return (
@@ -35,20 +32,18 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
       <div className="hidden overflow-clip rounded-2xl border border-line bg-white xl:block">
         <table className="w-full table-fixed text-left text-[0.925rem]">
           <colgroup>
-            <col className="w-11" />
-            <col className="w-[6.75rem]" />
+            <col className="w-[4.75rem]" />
             <col />
             <col />
-            <col className="w-[6.75rem]" />
+            <col className="w-[7.25rem]" />
             <col className="w-[3.25rem]" />
-            <col className="w-[4.25rem]" />
+            <col className="w-16" />
             <col className="w-[9.5rem]" />
-            <col className="w-[12.25rem]" />
+            <col className="w-[16.25rem]" />
           </colgroup>
           <thead className="text-sm text-muted">
             <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:border-b [&>th]:border-line [&>th]:bg-surface [&>th]:whitespace-nowrap [&>th]:px-2.5 [&>th]:py-3 [&>th]:font-semibold">
-              <th scope="col">No.</th>
-              <th scope="col">Kode Makam</th>
+              <th scope="col">Kode</th>
               <th scope="col">Nama</th>
               <th scope="col">Ahli Waris</th>
               <th scope="col">Tanggal Wafat</th>
@@ -59,9 +54,8 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-line [&_td]:px-2.5 [&_td]:py-3">
-            {items.map((grave, i) => (
+            {items.map((grave) => (
               <tr key={grave.id} className="align-middle hover:bg-surface/60">
-                <td className="text-muted tabular-nums">{startIndex + i}</td>
                 <td className="whitespace-nowrap font-semibold">{grave.grave_code}</td>
                 <td>
                   <span className={cn("block break-words font-semibold text-ink", grave.verify_deceased_name && "text-danger")}>
@@ -69,7 +63,7 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
                   </span>
                   {!grave.is_public && <span className="block text-xs font-medium text-gold">Tidak tampil di publik</span>}
                 </td>
-                <td className={cn("break-words", grave.verify_heir_name && "font-medium text-danger")}>
+                <td className={cn("break-words text-ink", grave.verify_heir_name && "font-medium text-danger")}>
                   {grave.heir_name?.trim() ? grave.heir_name : <span className="text-muted">{HEIR_EMPTY}</span>}
                 </td>
                 <td className={cn("whitespace-nowrap", grave.verify_death_date && "font-medium text-danger")}>
@@ -82,14 +76,7 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
                   <FlagSummary record={grave} className="mt-1" />
                 </td>
                 <td>
-                  <div className="flex items-center gap-2">
-                    <Link href={editHref(grave.id)} className={buttonClass("secondary", "sm", "px-2.5")}>
-                      <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
-                      Edit
-                      <span className="sr-only"> {grave.deceased_name}</span>
-                    </Link>
-                    <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} className="px-2.5" />
-                  </div>
+                  <RowActions grave={grave} listHref={listHref} className="flex items-center gap-1" />
                 </td>
               </tr>
             ))}
@@ -107,23 +94,15 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
             <p className={cn("mt-0.5 break-words text-lg font-semibold leading-snug", grave.verify_deceased_name && "text-danger")}>
               {grave.deceased_name}
             </p>
-            <p className={cn("text-[0.95rem] text-muted", grave.verify_death_date && "font-medium text-danger")}>
-              Wafat: {formatDate(grave.death_date, "—")}
+            <p className={cn("break-words text-[0.95rem]", grave.verify_heir_name && "font-medium text-danger")}>
+              <span className={cn(!grave.verify_heir_name && "text-muted")}>Ahli Waris:</span>{" "}
+              {grave.heir_name?.trim() ? grave.heir_name : <span className="text-muted">{HEIR_EMPTY}</span>}
             </p>
-            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="inline-flex items-center gap-1.5">
-                <Layers className="size-4 text-primary" aria-hidden="true" />
-                Blok {blockOf(grave)}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Hash className="size-4 text-primary" aria-hidden="true" />
-                No. {padGraveNumber(grave.grave_number)}
-              </span>
-            </p>
-            <p className={cn("mt-1 flex items-start gap-1.5 text-sm", grave.verify_heir_name && "font-medium text-danger")}>
-              <SquareUser className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-              <span className="min-w-0 break-words">
-                Ahli Waris: {grave.heir_name?.trim() ? grave.heir_name : <span className="text-muted">{HEIR_EMPTY}</span>}
+            <p className="mt-2 text-sm text-muted">
+              <span className={cn(grave.verify_death_date && "font-medium text-danger")}>Wafat: {formatDate(grave.death_date, "—")}</span>
+              <br />
+              <span className={cn(grave.verify_location && "font-medium text-danger")}>
+                Blok {blockOf(grave)} • No. {padGraveNumber(grave.grave_number)}
               </span>
             </p>
             {(!grave.is_public || grave.verification_status === "NEEDS_VERIFICATION") && (
@@ -132,18 +111,31 @@ export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
                 {!grave.is_public && <p className="text-xs font-medium text-gold">Tidak tampil di publik</p>}
               </div>
             )}
-            <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
-              <Link href={editHref(grave.id)} className={buttonClass("secondary", "md", "w-full")}>
-                <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
-                Edit
-                <span className="sr-only"> {grave.deceased_name}</span>
-              </Link>
-              <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} size="md" className="w-full" />
-            </div>
+            <RowActions grave={grave} listHref={listHref} className="mt-auto grid grid-cols-3 gap-2 pt-3" />
           </li>
         ))}
       </ul>
     </>
+  );
+}
+
+/** Aksi per baris: Detail → Edit → Hapus. Hapus berupa outline agar tidak lebih dominan dari Detail/Edit. */
+function RowActions({ grave, listHref, className }: { grave: GraveListItem; listHref: string; className?: string }) {
+  const back = `back=${encodeURIComponent(listHref)}`;
+  return (
+    <div className={className}>
+      <Link href={`/admin/makam/${grave.id}?${back}`} className={buttonClass("outline", "xs")}>
+        <LinkPendingIcon className="size-4" icon={<Eye className="size-4" aria-hidden="true" />} />
+        Detail
+        <span className="sr-only"> {grave.deceased_name}</span>
+      </Link>
+      <Link href={`/admin/makam/${grave.id}/edit?${back}`} className={buttonClass("outlinePrimary", "xs")}>
+        <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
+        Edit
+        <span className="sr-only"> {grave.deceased_name}</span>
+      </Link>
+      <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} size="xs" />
+    </div>
   );
 }
 

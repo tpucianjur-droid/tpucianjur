@@ -3,12 +3,15 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "./cn";
 import { Spinner } from "./spinner";
 
-type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger" | "dangerSolid";
-type Size = "sm" | "md" | "lg";
+type Variant = "primary" | "secondary" | "outline" | "outlinePrimary" | "soft" | "ghost" | "danger" | "dangerSolid";
+type Size = "xs" | "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover shadow-sm",
   secondary: "bg-white text-primary border border-line hover:border-primary/40 hover:bg-primary-soft",
+  /** Netral (mis. "Detail"): tidak bersaing dengan aksi utama. */
+  outline: "bg-white text-ink border border-line hover:border-ink/25 hover:bg-surface",
+  outlinePrimary: "bg-white text-primary border border-primary/40 hover:bg-primary-soft",
   soft: "bg-sage text-primary hover:bg-sage-strong",
   ghost: "text-primary hover:bg-primary-soft",
   danger: "bg-white text-danger border border-danger/40 hover:bg-danger-soft",
@@ -16,14 +19,16 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "min-h-9 px-3 text-sm",
-  md: "min-h-11 px-4 text-[0.95rem]",
-  lg: "min-h-13 px-6 text-base",
+  /** Ringkas untuk deret aksi di tabel/kartu daftar; tetap >= 40px agar mudah disentuh. */
+  xs: "min-h-10 gap-1.5 px-2 text-sm",
+  sm: "min-h-9 gap-2 px-3 text-sm",
+  md: "min-h-11 gap-2 px-4 text-[0.95rem]",
+  lg: "min-h-13 gap-2 px-6 text-base",
 };
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", className?: string) {
   return cn(
-    "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors duration-150",
+    "inline-flex items-center justify-center rounded-xl font-semibold transition-colors duration-150",
     "disabled:cursor-not-allowed disabled:not-aria-busy:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-busy:cursor-wait",
     VARIANTS[variant],
     SIZES[size],

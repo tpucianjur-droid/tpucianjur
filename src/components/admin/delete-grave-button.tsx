@@ -13,7 +13,15 @@ type Props = {
   graveId: string;
   code: string;
   name: string;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md" | "lg";
+  /** "danger" = outline (daftar), "dangerSolid" = tombol penuh (halaman Detail). */
+  variant?: "danger" | "dangerSolid";
+  label?: string;
+  /**
+   * Tujuan setelah berhasil dihapus (mis. daftar Data Makam dari halaman Detail).
+   * Tanpa ini halaman saat ini cukup dimuat ulang.
+   */
+  redirectTo?: string;
   className?: string;
 };
 
@@ -22,7 +30,7 @@ type Props = {
  * Selama proses: tombol nonaktif + spinner (cegah double submit), modal tidak dapat ditutup.
  * Gagal: pesan error di modal, halaman tetap utuh.
  */
-export function DeleteGraveButton({ graveId, code, name, size = "sm", className }: Props) {
+export function DeleteGraveButton({ graveId, code, name, size = "sm", variant = "danger", label = "Hapus", redirectTo, className }: Props) {
   const router = useRouter();
   const toast = useToast();
   const titleId = useId();
@@ -47,7 +55,8 @@ export function DeleteGraveButton({ graveId, code, name, size = "sm", className 
       if (result.status === "success") {
         setOpen(false);
         toast("Data makam berhasil dihapus.");
-        router.refresh();
+        if (redirectTo) router.push(redirectTo);
+        else router.refresh();
         return;
       }
       if (result.status === "error") {
@@ -60,16 +69,17 @@ export function DeleteGraveButton({ graveId, code, name, size = "sm", className 
   return (
     <>
       <Button
-        variant="danger"
+        variant={variant}
         size={size}
         className={className}
         onClick={() => {
           setError(null);
           setOpen(true);
         }}
-        icon={<Trash2 className="size-4" aria-hidden="true" />}
+        icon={<Trash2 className={size === "lg" ? "size-5" : "size-4"} aria-hidden="true" />}
       >
-        Hapus<span className="sr-only"> {name}</span>
+        {label}
+        <span className="sr-only"> {name}</span>
       </Button>
 
       {open && (

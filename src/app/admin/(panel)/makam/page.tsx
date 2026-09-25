@@ -99,7 +99,6 @@ export default async function GraveListPage({ searchParams }: PageProps<"/admin/
       ) : (
         <GraveList
           items={items}
-          startIndex={(filters.page - 1) * ADMIN.pageSize + 1}
           blockCodes={Object.fromEntries(blocks.map((b) => [b.id, b.code]))}
           listHref={hrefFor(filters.page)}
         />

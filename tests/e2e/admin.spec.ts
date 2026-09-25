@@ -156,6 +156,54 @@ test.describe("Admin", () => {
     await expect(page.getByText("0 data ditemukan")).toBeVisible();
   });
 
+  test("detail admin: data ahli waris lengkap, Edit/Simpan & Hapus kembali ke Data Makam", async ({ page }, info) => {
+    const number = info.project.name === "desktop" ? "53" : "54";
+    const code = `D-0${number}`;
+    const name = `Uji Detail ${info.project.name}`;
+    await login(page);
+    await page.goto("/admin/makam/tambah");
+    await page.getByLabel("Nama yang dimakamkan").fill(name);
+    await page.getByLabel("Nama ahli waris").fill("Waris Uji");
+    await page.getByLabel("Telepon ahli waris").fill("081234567890");
+    await page.getByLabel("Alamat ahli waris").fill("Jl. Raya Cianjur No. 10, Kec. Cianjur, Kab. Cianjur, Jawa Barat 43215 — alamat panjang untuk uji wrap");
+    await page.locator("#f-block_id").selectOption({ label: "Blok D" });
+    await page.getByLabel("Nomor makam").fill(number);
+    await page.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/makam$/);
+
+    // Daftar: Detail → Edit → Hapus, ahli waris tampil.
+    await page.goto(`/admin/makam?q=${code}`);
+    const row = page.locator("tr, li").filter({ hasText: code }).locator("visible=true").first();
+    await expect(row).toContainText("Waris Uji");
+    const actions = row.getByRole("link", { name: /^(Detail|Edit)/ }).or(row.getByRole("button", { name: /^Hapus/ }));
+    await expect(actions).toHaveText([/^Detail/, /^Edit/, /^Hapus/]);
+
+    await row.getByRole("link", { name: /^Detail/ }).click();
+    await expect(page.getByRole("heading", { name: "Detail Data Makam" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/makam\/[0-9a-f-]{36}\?back=/);
+    for (const text of [code, name, "Waris Uji", "081234567890", "Kec. Cianjur", "Lokasi Makam", "Catatan Verifikasi / Status Data"]) {
+      await expect(page.getByText(text, { exact: false }).first()).toBeVisible();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    // Edit → Simpan => kembali ke Data Makam (filter sebelumnya).
+    await page.getByRole("link", { name: "Edit Data" }).click();
+    await expect(page.getByRole("heading", { name: `Edit Data Makam ${code}` })).toBeVisible();
+    await page.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(page.getByText("Data makam berhasil disimpan.")).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/admin/makam\\?q=${code}$`));
+
+    // Hapus dari Detail => konfirmasi, lalu kembali ke daftar yang sudah diperbarui.
+    await page.getByRole("link", { name: /^Detail/ }).locator("visible=true").first().click();
+    await page.getByRole("button", { name: /^Hapus Data/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Hapus data makam?" });
+    await expect(dialog).toContainText(`Data ${code}`);
+    await dialog.getByRole("button", { name: "Hapus Data" }).click();
+    await expect(page.getByText("Data makam berhasil dihapus.")).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/admin/makam\\?q=${code}$`));
+    await expect(page.getByText("0 data ditemukan")).toBeVisible();
+  });
+
   test("validasi form: pesan sederhana di bawah field", async ({ page }) => {
     await login(page);
     await page.goto("/admin/makam/tambah");
