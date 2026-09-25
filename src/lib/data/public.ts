@@ -8,6 +8,8 @@ import { logError } from "@/lib/log";
 
 export type PublicSettings = Pick<CemeteryRow, "id" | "name" | "address" | "google_maps_url" | "google_maps_query">;
 export type PublicBlock = Pick<BlockRow, "id" | "code" | "name" | "grid_rows" | "grid_columns" | "sort_order">;
+/** Detail makam publik (halaman detail/lokasi tidak menampilkan ahli waris). */
+export type PublicGraveDetail = Omit<PublicGraveRow, "heir_name">;
 export type DenahGrave = Pick<
   PublicGraveRow,
   "id" | "grave_code" | "deceased_name" | "grave_number" | "visual_x" | "visual_y" | "visual_row" | "visual_column"
@@ -71,7 +73,7 @@ export async function getActiveBlocks(): Promise<PublicBlock[]> {
   }
 }
 
-export async function getPublicGraveByCode(code: string): Promise<PublicGraveRow | null> {
+export async function getPublicGraveByCode(code: string): Promise<PublicGraveDetail | null> {
   const { data, error } = await getPublicSupabase()
     .from("public_graves")
     .select(
@@ -115,6 +117,7 @@ export async function searchPublicGraves(input: SearchInput, offset = 0): Promis
       death_date: row.death_date,
       block_code: row.block_code,
       grave_number: row.grave_number,
+      heir_name: row.heir_name,
     })),
   };
 }

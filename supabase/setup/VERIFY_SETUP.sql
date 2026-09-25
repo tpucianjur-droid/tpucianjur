@@ -26,9 +26,9 @@ with checks as (
   union all
   select 'anon tidak punya SELECT di graves', not has_table_privilege('anon', 'public.graves', 'select')
   union all
-  select 'view publik tanpa kolom ahli waris', not exists (
+  select 'view publik tanpa telepon/alamat ahli waris', not exists (
     select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'public_graves' and column_name like 'heir%')
+    where table_schema = 'public' and table_name = 'public_graves' and column_name in ('heir_phone', 'heir_address'))
   union all
   select 'bucket grave-photos ada', exists (select 1 from storage.buckets where id = 'grave-photos')
   union all

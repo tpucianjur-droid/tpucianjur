@@ -35,7 +35,7 @@ const FAQ = [
   },
   {
     q: "Apakah data ahli waris ditampilkan?",
-    a: "Tidak. Data ahli waris (nama, telepon, alamat) bersifat internal dan hanya dapat diakses petugas.",
+    a: "Nama ahli waris dapat ditampilkan pada hasil pencarian makam. Nomor telepon dan alamat ahli waris tetap bersifat internal dan hanya dapat diakses petugas.",
   },
 ] as const;
 

@@ -27,6 +27,7 @@ const header = `-- =============================================================
 
 -- Pra-langkah agar baseline dapat dijalankan ulang (view publik dibuat ulang di migrasi berikutnya).
 drop view if exists public.public_graves;
+drop function if exists public.search_public_graves(text, text, text, integer, integer);
 `;
 
 const body = files

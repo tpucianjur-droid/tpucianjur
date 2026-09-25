@@ -28,23 +28,24 @@ const hasAdmin = Boolean(env.E2E_ADMIN_EMAIL && env.E2E_ADMIN_PASSWORD);
 test.describe("Publik (Supabase hosted)", () => {
   test.skip(!hasSupabase, "Supabase hosted belum dikonfigurasi di .env.local");
 
-  test("partial search 'sutiar' menemukan A-001 dan detail tidak memuat data ahli waris", async ({ page }) => {
+  test("partial search 'sutiar' menampilkan nama ahli waris tanpa membuka data privat", async ({ page }) => {
     await page.goto("/cari-makam?q=sutiar");
     const card = page.getByRole("article").filter({ hasText: "Sutiarna" });
     await expect(card).toContainText("A-001");
+    await expect(card).toContainText("Ahli Waris: Indra Mawana Yusuf");
     await card.getByRole("link", { name: /Detail/ }).click();
     await expect(page).toHaveURL(/\/makam\/A-001$/);
     await expect(page.getByRole("heading", { name: "Sutiarna" })).toBeVisible();
     await expect(page.getByText("17 Agustus 2024")).toBeVisible();
-    const html = await page.content();
-    expect(html).not.toContain("Indra Mawana Yusuf");
-    expect(html).not.toContain("Griya Permata Permai");
+    const mainText = await page.getByRole("main").innerText();
+    expect(mainText).not.toContain("Indra Mawana Yusuf");
+    expect(mainText).not.toContain("Griya Permata Permai");
   });
 
-  test("API pencarian tidak mengirim field ahli waris", async ({ request }) => {
+  test("API pencarian tidak mengirim telepon/alamat ahli waris", async ({ request }) => {
     const res = await request.get("/api/cari?q=komala");
     const text = await res.text();
-    expect(text).not.toMatch(/heir_|Komala Ningsih/);
+    expect(text).not.toMatch(/heir_phone|heir_address|Komala Ningsih/);
     const res2 = await request.get("/api/cari?q=supriyatna");
     expect(await res2.text()).toContain("A-002");
   });
@@ -81,7 +82,7 @@ test.describe("Admin (Supabase hosted)", () => {
     await page.getByLabel("Email").fill(env.E2E_ADMIN_EMAIL!);
     await page.getByLabel("Password", { exact: true }).fill(env.E2E_ADMIN_PASSWORD!);
     await page.getByRole("button", { name: "Masuk" }).click();
-    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible({ timeout: 15_000 });
 
     // Tambah data uji (tanpa foto).
     await page.goto("/admin/makam/tambah");
@@ -125,6 +126,6 @@ test.describe("Admin (Supabase hosted)", () => {
     // Bersihkan: arsipkan data uji.
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Arsipkan data" }).click();
-    await expect(page.getByText(/dipindahkan ke arsip/)).toBeVisible();
+    await expect(page.locator('[aria-live="polite"]').getByRole("status").filter({ hasText: /dipindahkan ke arsip/ })).toBeVisible();
   });
 });

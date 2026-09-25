@@ -18,7 +18,7 @@ const GOALS = [
   { icon: Search, title: "Pencarian cepat", text: "Masyarakat dapat mencari makam hanya dengan sebagian nama." },
   { icon: MapIcon, title: "Dua tahap navigasi", text: "Google Maps menuju TPU, lalu denah internal untuk menemukan posisi makam." },
   { icon: Database, title: "Data terstruktur", text: "Catatan tulisan tangan didigitalisasi dan diverifikasi petugas secara bertahap." },
-  { icon: ShieldCheck, title: "Privasi terjaga", text: "Data ahli waris hanya dapat diakses petugas yang berwenang." },
+  { icon: ShieldCheck, title: "Privasi terjaga", text: "Nomor telepon dan alamat ahli waris hanya dapat diakses petugas yang berwenang." },
 ] as const;
 
 const WHATSAPP = { display: "0853-5333-0411", url: "https://wa.me/6285353330411" } as const;
@@ -67,12 +67,12 @@ export default async function TentangPage() {
           <SectionHeading align="left" eyebrow="Privasi Data" title="Informasi yang ditampilkan" />
           <Card className="space-y-3 p-5 text-[0.95rem] leading-relaxed">
             <p>
-              Halaman publik hanya menampilkan <strong>nama yang dimakamkan, tanggal wafat, blok, nomor dan kode makam, denah
-              posisi, serta foto makam</strong> bila tersedia.
+              Halaman publik hanya menampilkan <strong>nama yang dimakamkan, tanggal wafat, blok, nomor dan kode makam, nama
+              ahli waris, denah posisi, serta foto makam</strong> bila tersedia.
             </p>
             <p>
-              Nama, nomor telepon, dan alamat ahli waris adalah <strong>data internal</strong> yang hanya dapat dilihat petugas
-              yang telah masuk ke sistem.
+              Nomor telepon dan alamat ahli waris adalah <strong>data internal</strong> yang hanya dapat dilihat petugas yang
+              telah masuk ke sistem.
             </p>
             <p className="text-muted">
               Sebagian data berasal dari catatan tulisan tangan dan sedang diverifikasi. Bila menemukan data yang keliru, silakan

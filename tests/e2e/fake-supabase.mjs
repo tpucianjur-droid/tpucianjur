@@ -105,7 +105,7 @@ const graves = parseCsv(readFileSync(join(root, "03_Data_Seed", "data_makam_149_
   }),
 );
 
-/** View publik: TANPA field ahli waris (sama seperti public.public_graves). */
+/** View publik: dari ahli waris hanya nama, TANPA telepon/alamat (sama seperti public.public_graves). */
 const publicGraves = () =>
   graves
     .filter((g) => g.is_public && !g.archived_at)
@@ -115,6 +115,7 @@ const publicGraves = () =>
         id: g.id, grave_code: g.grave_code, deceased_name: g.deceased_name, death_date: g.death_date,
         block_code: block?.code ?? null, block_name: block?.name ?? null, grave_number: g.grave_number,
         visual_x: g.visual_x, visual_y: g.visual_y, visual_row: g.visual_row, visual_column: g.visual_column, photo_path: g.photo_path,
+        heir_name: g.heir_name,
       };
     });
 
@@ -205,8 +206,8 @@ function search({ p_query = "", p_block = null, p_code = null, p_limit = 20, p_o
   const hits = publicGraves()
     .filter((g) => (g.deceased_name.toLowerCase().includes(term) || (p_code && g.grave_code === p_code)) && (!p_block || g.block_code === p_block))
     .sort((a, b) => rank(a) - rank(b) || a.deceased_name.localeCompare(b.deceased_name));
-  return hits.slice(p_offset, p_offset + Math.min(p_limit, 50)).map(({ id, grave_code, deceased_name, death_date, block_code, grave_number }) => ({
-    id, grave_code, deceased_name, death_date, block_code, grave_number, total_count: hits.length,
+  return hits.slice(p_offset, p_offset + Math.min(p_limit, 50)).map(({ id, grave_code, deceased_name, death_date, block_code, grave_number, heir_name }) => ({
+    id, grave_code, deceased_name, death_date, block_code, grave_number, heir_name, total_count: hits.length,
   }));
 }
 

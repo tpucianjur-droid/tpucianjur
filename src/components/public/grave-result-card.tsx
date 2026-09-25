@@ -20,6 +20,7 @@ function GraveIcon() {
 
 export function GraveResultCard({ grave }: { grave: GraveSummary }) {
   const detailHref = `/makam/${grave.grave_code}`;
+  const heirName = grave.heir_name?.trim();
   return (
     <Card className="p-4 sm:p-5">
       <article className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -34,6 +35,11 @@ export function GraveResultCard({ grave }: { grave: GraveSummary }) {
               </Link>
             </h3>
             <p className="text-[0.95rem] text-muted">Wafat: {formatDate(grave.death_date)}</p>
+            {heirName && (
+              <p className="break-words text-[0.95rem] leading-snug text-muted">
+                Ahli Waris: <span className="font-medium text-ink">{heirName}</span>
+              </p>
+            )}
             <dl className="mt-3 grid grid-cols-3 gap-2 text-sm sm:max-w-md">
               <Meta icon={<Layers className="size-4" />} label="Blok" value={grave.block_code ?? "-"} />
               <Meta icon={<Hash className="size-4" />} label="Nomor" value={padGraveNumber(grave.grave_number)} />

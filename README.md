@@ -96,6 +96,6 @@ tests/unit, tests/e2e
 
 ## 7. Catatan keamanan
 
-- Publik hanya membaca view `public_graves` & RPC `search_public_graves` (tanpa nama/telepon/alamat ahli waris). `anon` tidak punya privilege ke tabel `graves`.
+- Publik hanya membaca view `public_graves` & RPC `search_public_graves` (dari ahli waris hanya nama; tanpa telepon/alamat). `anon` tidak punya privilege ke tabel `graves`.
 - Semua tulis/baca data internal lewat RLS `is_admin()` (tabel `admin_users`), divalidasi ulang di server (Zod) dan dicatat otomatis ke `audit_logs` oleh trigger.
 - Foto: dikompres di browser (WebP ≤1280px, target ≤250 KB), divalidasi ulang di server (signature byte, ≤1 MB), bucket dibatasi WebP/JPEG 1 MB.

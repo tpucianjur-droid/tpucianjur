@@ -22,7 +22,7 @@ for (const name of ["E2E_ADMIN_EMAIL", "E2E_ADMIN_PASSWORD", "E2E_USER_EMAIL", "
 }
 if (!URL_ || !KEY || URL_.includes("YOUR-PROJECT-REF")) throw new Error("Supabase hosted belum dikonfigurasi di .env.local");
 
-const HEIR_NAME_A001 = "Indra Mawana Yusuf"; // ahli waris A-001 pada seed (tidak boleh bocor ke publik)
+const HEIR_NAME_A001 = "Indra Mawana Yusuf"; // ahli waris A-001 pada seed (nama boleh tampil di publik; telepon/alamat tidak)
 const results = [];
 function check(group, name, ok, detail = "") {
   results.push({ group, name, ok: Boolean(ok), detail });
@@ -65,7 +65,7 @@ const user = await login(env.E2E_USER_EMAIL, env.E2E_USER_PASSWORD);
 const a001Before = (await rest(admin.token, "GET", "graves?grave_code=eq.A-001&select=id,deceased_name,heir_name,heir_phone,heir_address,updated_at", undefined, null)).json[0];
 const blockD = (await rest(null, "GET", "blocks?code=eq.D&select=id,cemetery_id,name", undefined, null)).json[0];
 const cemeteryBefore = (await rest(null, "GET", "cemeteries?select=id,name", undefined, null)).json[0];
-const privateCols = ["heir_name", "heir_phone", "heir_address", "verify_", "transcription_", "source_file", "legacy_no", "recorded_date_raw", "archived_at", "is_public"];
+const privateCols = ["heir_phone", "heir_address", "verify_", "transcription_", "source_file", "legacy_no", "recorded_date_raw", "archived_at", "is_public"];
 
 // =====================================================================
 // PUBLIC / ANON
@@ -78,10 +78,12 @@ const privateCols = ["heir_name", "heir_phone", "heir_address", "verify_", "tran
   const cols = view.json?.[0] ? Object.keys(view.json[0]) : [];
   check(g, "public_graves terbaca 149 baris", view.status === 200 && view.json.length === 149, `HTTP ${view.status}, ${view.json?.length}`);
   check(g, "public_graves tanpa kolom privat/verifikasi", cols.length > 0 && !cols.some((c) => privateCols.some((p) => c.startsWith(p))), cols.join(","));
-  check(g, "respons publik tidak memuat nama/telepon/alamat ahli waris", !view.text.includes(HEIR_NAME_A001) && !(a001Before.heir_phone && view.text.includes(a001Before.heir_phone)) && !(a001Before.heir_address && view.text.includes(a001Before.heir_address)));
-  check(g, "select heir_name via view ditolak", denied(await rest(null, "GET", "public_graves?select=heir_name", undefined, null)));
+  check(g, "public_graves memuat nama ahli waris", view.text.includes(HEIR_NAME_A001));
+  check(g, "respons publik tidak memuat telepon/alamat ahli waris", !(a001Before.heir_phone && view.text.includes(a001Before.heir_phone)) && !(a001Before.heir_address && view.text.includes(a001Before.heir_address)));
+  check(g, "select heir_phone via view ditolak", denied(await rest(null, "GET", "public_graves?select=heir_phone", undefined, null)));
+  check(g, "select heir_address via view ditolak", denied(await rest(null, "GET", "public_graves?select=heir_address", undefined, null)));
   const search = await rest(null, "POST", "rpc/search_public_graves", { p_query: "sutiar" }, null);
-  check(g, "RPC pencarian publik jalan tanpa field privat", search.status === 200 && search.json.some((r) => r.grave_code === "A-001") && !/heir_|verify_/.test(search.text));
+  check(g, "RPC pencarian publik jalan tanpa field privat", search.status === 200 && search.json.some((r) => r.grave_code === "A-001") && !/heir_phone|heir_address|verify_/.test(search.text));
   check(g, "audit_logs ditolak", denied(await rest(null, "GET", "audit_logs?select=id&limit=1", undefined, null)));
   check(g, "admin_users ditolak", denied(await rest(null, "GET", "admin_users?select=user_id", undefined, null)));
   check(g, "block_grave_counts ditolak", denied(await rest(null, "GET", "block_grave_counts?select=*", undefined, null)));
@@ -160,7 +162,7 @@ try {
   const upd = await rest(t, "PATCH", `graves?id=eq.${testId}`, { verify_heir_address: false });
   check(g, "UPDATE graves + status jadi VERIFIED", upd.status === 200 && upd.json[0]?.verification_status === "VERIFIED");
   const pub = await rest(null, "GET", `public_graves?id=eq.${testId}&select=*`, undefined, null);
-  check(g, "data publik baru tampil di view tanpa ahli waris", pub.json?.length === 1 && !pub.text.includes("Ahli Waris Uji") && !pub.text.includes("080000000000"));
+  check(g, "data publik baru tampil di view tanpa telepon/alamat ahli waris", pub.json?.length === 1 && !pub.text.includes("080000000000") && !pub.text.includes("Alamat uji"));
 
   // Storage: foto opsional, maks. 1 per makam (logika aplikasi), hanya Admin yang menulis.
   const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x1a, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4c, 0x0d, 0, 0, 0, 0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07, 0]);

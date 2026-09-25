@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 const RESULTS = {
   total: 2,
   items: [
-    { id: "11111111-1111-4111-8111-111111111111", grave_code: "A-032", deceased_name: "Rita Mangsari", death_date: "2021-03-12", block_code: "A", grave_number: 32 },
-    { id: "22222222-2222-4222-8222-222222222222", grave_code: "A-077", deceased_name: "Siti Rita", death_date: null, block_code: "A", grave_number: 77 },
+    { id: "11111111-1111-4111-8111-111111111111", grave_code: "A-032", deceased_name: "Rita Mangsari", death_date: "2021-03-12", block_code: "A", grave_number: 32, heir_name: "Ujang Supardi" },
+    { id: "22222222-2222-4222-8222-222222222222", grave_code: "A-077", deceased_name: "Siti Rita", death_date: null, block_code: "A", grave_number: 77, heir_name: null },
   ],
 };
 
@@ -47,6 +47,9 @@ test.describe("Cari Makam (UI, API di-mock)", () => {
     const first = page.getByRole("article").filter({ hasText: "Rita Mangsari" });
     await expect(first).toBeVisible();
     await expect(first).toContainText("Wafat: 12 Maret 2021");
+    await expect(first).toContainText("Ahli Waris: Ujang Supardi");
+    // Nama ahli waris kosong => baris "Ahli Waris" tidak ditampilkan.
+    await expect(page.getByRole("article").filter({ hasText: "Siti Rita" })).not.toContainText("Ahli Waris");
     await expect(first).toContainText("A-032");
     await expect(first).toContainText("032");
     await expect(first.getByRole("link", { name: /Detail/ })).toHaveAttribute("href", "/makam/A-032");

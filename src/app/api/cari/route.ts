@@ -5,7 +5,8 @@ import { buildSearchInput, isSearchable } from "@/lib/search/normalize";
 
 /**
  * GET /api/cari?q=rita&blok=A&offset=0
- * Hanya mengembalikan field publik (dari RPC search_public_graves di atas view public_graves).
+ * Hanya mengembalikan field publik (dari RPC search_public_graves di atas view public_graves);
+ * dari data ahli waris hanya nama yang ikut, tanpa telepon/alamat.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;

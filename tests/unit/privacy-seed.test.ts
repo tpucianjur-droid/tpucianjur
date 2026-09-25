@@ -6,6 +6,8 @@ import { pickFlags, computeVerificationStatus } from "@/lib/graves/verification"
 const root = join(__dirname, "..", "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 const migration = read("supabase/migrations/20260924000002_v1_security_logic.sql");
+// Migrasi terbaru yang membentuk view & RPC publik (nama ahli waris dibuka, telepon/alamat tidak).
+const publicHeirMigration = read("supabase/migrations/20260925000001_public_heir_name.sql");
 
 function walk(dir: string): string[] {
   return readdirSync(join(root, dir)).flatMap((name) => {
@@ -15,16 +17,18 @@ function walk(dir: string): string[] {
 }
 
 describe("privasi data ahli waris (AC-PUB-03, NFR-004)", () => {
-  it("view public_graves tidak memuat kolom ahli waris / catatan internal", () => {
-    const view = migration.match(/create view public\.public_graves[\s\S]*?;/)?.[0] ?? "";
+  it("view public_graves hanya memuat nama ahli waris (tanpa telepon/alamat/catatan internal)", () => {
+    const view = publicHeirMigration.match(/create or replace view public\.public_graves[\s\S]*?;/)?.[0] ?? "";
     expect(view).toContain("g.deceased_name");
-    expect(view).not.toMatch(/heir_|transcription|recorded_date_raw|verify_/);
+    expect(view).toContain("g.heir_name");
+    expect(view).not.toMatch(/heir_phone|heir_address|transcription|recorded_date_raw|verify_/);
   });
 
-  it("RPC pencarian publik tidak mengembalikan data ahli waris", () => {
-    const fn = migration.match(/create or replace function public\.search_public_graves[\s\S]*?\$\$;/)?.[0] ?? "";
+  it("RPC pencarian publik hanya mengembalikan nama ahli waris (tanpa telepon/alamat)", () => {
+    const fn = publicHeirMigration.match(/create or replace function public\.search_public_graves[\s\S]*?\$\$;/)?.[0] ?? "";
     expect(fn).toContain("from public.public_graves");
-    expect(fn).not.toMatch(/heir_/);
+    expect(fn).toContain("heir_name");
+    expect(fn).not.toMatch(/heir_phone|heir_address/);
   });
 
   it("anon tidak punya akses langsung ke tabel graves; tulis hanya untuk is_admin()", () => {
@@ -37,7 +41,7 @@ describe("privasi data ahli waris (AC-PUB-03, NFR-004)", () => {
     }
   });
 
-  it("kode halaman & API publik tidak pernah memilih kolom ahli waris", () => {
+  it("kode halaman & API publik tidak pernah memilih telepon/alamat ahli waris", () => {
     const publicFiles = [
       "src/lib/data/public.ts",
       ...walk("src/app/(public)"),
@@ -46,7 +50,7 @@ describe("privasi data ahli waris (AC-PUB-03, NFR-004)", () => {
       ...walk("src/components/denah"),
     ].filter((f) => /\.(ts|tsx)$/.test(f));
     for (const file of publicFiles) {
-      expect(read(file), file).not.toMatch(/heir_(name|phone|address)/);
+      expect(read(file), file).not.toMatch(/heir_(phone|address)/);
     }
   });
 

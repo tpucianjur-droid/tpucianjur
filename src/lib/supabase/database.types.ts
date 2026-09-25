@@ -91,6 +91,7 @@ export type PublicGraveRow = {
   visual_row: number | null;
   visual_column: number | null;
   photo_path: string | null;
+  heir_name: string | null;
 };
 
 export type SearchResultRow = {
@@ -100,6 +101,7 @@ export type SearchResultRow = {
   death_date: string | null;
   block_code: string | null;
   grave_number: number | null;
+  heir_name: string | null;
   total_count: number;
 };
 
