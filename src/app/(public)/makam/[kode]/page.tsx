@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Calendar, Hash, Info, Layers, Map as MapIcon, MapPin, QrCode } from "lucide-react";
+import { Calendar, Hash, Info, Layers, Map as MapIcon, MapPin, QrCode, Users } from "lucide-react";
+import { BackToResults } from "@/components/public/back-to-results";
 import { GravePhoto } from "@/components/public/grave-photo";
 import { DirectionsButton, LocationCard } from "@/components/public/maps-buttons";
 import { PageHero } from "@/components/public/page-hero";
@@ -32,37 +33,31 @@ export default async function GraveDetailPage({ params }: PageProps<"/makam/[kod
   const { kode } = await params;
   const [grave, settings] = await Promise.all([loadGrave(kode), getSettings()]);
 
+  const tpuName = settings?.name ?? "TPU Astana Pratiksha Cianjur";
+  const heirName = grave.heir_name?.trim();
+
   return (
     <>
       <PageHero
         title="Detail Makam"
-        description={`Informasi lokasi makam di ${settings?.name ?? "TPU Astana Pratiksha Cianjur"}.`}
+        description={`Informasi lokasi makam di ${tpuName}.`}
         crumbs={[{ href: "/cari-makam", label: "Cari Makam" }, { label: "Detail Makam" }]}
       />
       <div className="relative z-10 mx-auto -mt-8 max-w-5xl space-y-6 px-4 pb-16 sm:px-6">
-        <Card className="p-5 sm:p-7">
-          <div className="grid gap-6 md:grid-cols-[minmax(0,320px)_1fr]">
-            <GravePhoto photoPath={grave.photo_path} name={grave.deceased_name} eager />
-            <div className="space-y-5">
-              <div>
-                <h2 className="font-serif text-3xl font-semibold leading-tight">{grave.deceased_name}</h2>
-                <p className="mt-2 flex items-center gap-2 text-muted">
-                  <Calendar className="size-5 text-primary" aria-hidden="true" />
-                  <span>
-                    Tanggal wafat: <strong className="font-semibold text-ink">{formatDate(grave.death_date)}</strong>
-                  </span>
-                </p>
-              </div>
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <InfoTile icon={<Layers className="size-5" />} label="Blok Makam" value={grave.block_code ?? "-"} />
-                <InfoTile icon={<Hash className="size-5" />} label="Nomor Makam" value={padGraveNumber(grave.grave_number)} />
-                <InfoTile icon={<QrCode className="size-5" />} label="Kode Makam" value={grave.grave_code} />
-                <InfoTile icon={<MapPin className="size-5" />} label="Lokasi TPU" value={settings?.name ?? "TPU Astana Pratiksha Cianjur"} />
-              </dl>
-            </div>
-          </div>
+        <Card className="p-4 sm:p-7">
+          <BackToResults />
+          <h2 className="mt-1 break-words font-serif text-3xl font-semibold leading-tight sm:text-4xl">{grave.deceased_name}</h2>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <dl className="mt-4 grid gap-2.5 sm:mt-5 md:grid-cols-2 md:gap-4">
+            <InfoTile icon={<Calendar className="size-5 sm:size-6" />} label="Tanggal Wafat" value={formatDate(grave.death_date)} />
+            <InfoTile icon={<Layers className="size-5 sm:size-6" />} label="Blok Makam" value={grave.block_code ?? "-"} />
+            <InfoTile icon={<Hash className="size-5 sm:size-6" />} label="Nomor Makam" value={padGraveNumber(grave.grave_number)} />
+            <InfoTile icon={<QrCode className="size-5 sm:size-6" />} label="Kode Makam" value={grave.grave_code} />
+            {heirName && <InfoTile icon={<Users className="size-5 sm:size-6" />} label="Ahli Waris" value={heirName} />}
+            <InfoTile icon={<MapPin className="size-5 sm:size-6" />} label="Lokasi TPU" value={tpuName} />
+          </dl>
+
+          <div className="mt-4 grid gap-2.5 sm:mt-6 md:grid-cols-2 md:gap-4">
             <DirectionsButton settings={settings} className="w-full" />
             <LinkButton
               href={`/makam/${grave.grave_code}/lokasi`}
@@ -73,6 +68,13 @@ export default async function GraveDetailPage({ params }: PageProps<"/makam/[kod
             >
               Lihat Posisi Makam
             </LinkButton>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-6">
+          <h2 className="mb-3 font-semibold">Foto Makam</h2>
+          <div className="max-w-md">
+            <GravePhoto photoPath={grave.photo_path} name={grave.deceased_name} />
           </div>
         </Card>
 
@@ -96,13 +98,16 @@ export default async function GraveDetailPage({ params }: PageProps<"/makam/[kod
   );
 }
 
+/** Kartu informasi seragam: ikon lingkaran hijau muda, label, lalu nilai (nilai panjang wrap). */
 function InfoTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-line/80 bg-surface/60 p-3">
-      <IconBadge>{icon}</IconBadge>
-      <div className="min-w-0">
-        <dt className="text-sm text-muted">{label}</dt>
-        <dd className="font-serif text-xl font-semibold text-ink">{value}</dd>
+    <div className="flex items-center gap-3 rounded-xl border border-line/80 bg-surface/60 px-3 py-2.5 sm:gap-4 sm:p-5">
+      <span aria-hidden="true" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-sage text-primary sm:size-14">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <dt className="text-sm text-muted sm:text-base">{label}</dt>
+        <dd className="break-words font-serif text-lg font-semibold leading-snug text-ink sm:text-2xl">{value}</dd>
       </div>
     </div>
   );

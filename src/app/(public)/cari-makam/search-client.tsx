@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowUpDown, RotateCcw, Search, SearchX, X } from "lucide-react";
+import { rememberLastSearch } from "@/components/public/back-to-results";
 import { GraveResultCard } from "@/components/public/grave-result-card";
 import type { GraveSummary } from "@/lib/graves/types";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,9 @@ export function SearchClient({ blocks, initialQuery, initialBlock, initialResult
     lastKeyRef.current = key(term, blockCode);
     controllerRef.current?.abort();
     const qs = buildSearchQueryString(term, blockCode);
-    window.history.replaceState(null, "", qs ? `/cari-makam?${qs}` : "/cari-makam");
+    const url = qs ? `/cari-makam?${qs}` : "/cari-makam";
+    window.history.replaceState(null, "", url);
+    rememberLastSearch(url);
 
     if (term.length < SEARCH.minChars) {
       setStatus("idle");
@@ -75,7 +78,10 @@ export function SearchClient({ blocks, initialQuery, initialBlock, initialResult
     return () => window.clearTimeout(timer);
   }, [query, block, run]);
 
-  useEffect(() => () => controllerRef.current?.abort(), []);
+  useEffect(() => {
+    rememberLastSearch(window.location.pathname + window.location.search);
+    return () => controllerRef.current?.abort();
+  }, []);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();

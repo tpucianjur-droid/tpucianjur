@@ -5,8 +5,10 @@ test.describe("Alur publik: cari → detail → posisi", () => {
   test("partial search 'rit' (tanpa nama lengkap) menemukan Rita Mangsari A-032", async ({ page }) => {
     await page.goto("/cari-makam?q=rit");
     const card = page.getByRole("article").filter({ hasText: "Rita Mangsari" });
-    await expect(card).toContainText("A-032");
-    await expect(card).toContainText("Wafat: 9 April 2025");
+    await expect(card.getByRole("link", { name: /Detail/ })).toHaveAttribute("href", "/makam/A-032");
+    // Hasil pencarian hanya ringkasan: tanggal wafat & kode makam ada di halaman Detail.
+    await expect(card).not.toContainText("9 April 2025");
+    await expect(card).not.toContainText("A-032");
   });
 
   test("case-insensitive: 'SOPANDI' menemukan 2 makam", async ({ page }) => {
@@ -24,6 +26,9 @@ test.describe("Alur publik: cari → detail → posisi", () => {
     await page.goto("/makam/A-032");
     await expect(page.getByRole("heading", { name: "Rita Mangsari" })).toBeVisible();
     await expect(page.getByText("9 April 2025")).toBeVisible();
+    for (const label of ["Tanggal Wafat", "Blok Makam", "Nomor Makam", "Kode Makam", "Lokasi TPU"]) {
+      await expect(page.getByText(label, { exact: true })).toBeVisible();
+    }
     await expect(page.getByText("Foto makam belum tersedia")).toBeVisible();
     const maps = page.getByRole("link", { name: /Petunjuk ke TPU/ });
     await expect(maps).toHaveAttribute("href", /google\.com\/maps\/dir\/\?api=1&destination=.*548F%2BPCC/);

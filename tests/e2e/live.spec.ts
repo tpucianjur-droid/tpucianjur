@@ -38,7 +38,8 @@ test.describe("Publik (Supabase hosted)", () => {
     await expect(page.getByRole("heading", { name: "Sutiarna" })).toBeVisible();
     await expect(page.getByText("17 Agustus 2024")).toBeVisible();
     const mainText = await page.getByRole("main").innerText();
-    expect(mainText).not.toContain("Indra Mawana Yusuf");
+    // Detail menampilkan nama ahli waris saja, tanpa telepon/alamat.
+    expect(mainText).toContain("Indra Mawana Yusuf");
     expect(mainText).not.toContain("Griya Permata Permai");
   });
 

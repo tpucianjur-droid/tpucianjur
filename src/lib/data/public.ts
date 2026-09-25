@@ -8,8 +8,8 @@ import { logError } from "@/lib/log";
 
 export type PublicSettings = Pick<CemeteryRow, "id" | "name" | "address" | "google_maps_url" | "google_maps_query">;
 export type PublicBlock = Pick<BlockRow, "id" | "code" | "name" | "grid_rows" | "grid_columns" | "sort_order">;
-/** Detail makam publik (halaman detail/lokasi tidak menampilkan ahli waris). */
-export type PublicGraveDetail = Omit<PublicGraveRow, "heir_name">;
+/** Detail makam publik. Dari ahli waris hanya nama (view publik tidak memuat telepon/alamat). */
+export type PublicGraveDetail = PublicGraveRow;
 export type DenahGrave = Pick<
   PublicGraveRow,
   "id" | "grave_code" | "deceased_name" | "grave_number" | "visual_x" | "visual_y" | "visual_row" | "visual_column"
@@ -77,7 +77,7 @@ export async function getPublicGraveByCode(code: string): Promise<PublicGraveDet
   const { data, error } = await getPublicSupabase()
     .from("public_graves")
     .select(
-      "id, grave_code, deceased_name, death_date, block_code, block_name, grave_number, visual_x, visual_y, visual_row, visual_column, photo_path",
+      "id, grave_code, deceased_name, death_date, block_code, block_name, grave_number, visual_x, visual_y, visual_row, visual_column, photo_path, heir_name",
     )
     .eq("grave_code", code)
     .maybeSingle();

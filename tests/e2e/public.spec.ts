@@ -38,7 +38,7 @@ test.describe("Beranda", () => {
 });
 
 test.describe("Cari Makam (UI, API di-mock)", () => {
-  test("partial name: hasil menampilkan nama, wafat, blok, nomor, kode + tombol Detail & Lihat Posisi", async ({ page }) => {
+  test("partial name: hasil ringkas (nama + ahli waris) + tombol Detail & Lihat Posisi", async ({ page }) => {
     const requests = await mockSearch(page, () => ({ status: 200, body: RESULTS }));
     await page.goto("/cari-makam");
     const input = page.getByLabel("Nama yang dimakamkan atau kode makam");
@@ -46,12 +46,13 @@ test.describe("Cari Makam (UI, API di-mock)", () => {
 
     const first = page.getByRole("article").filter({ hasText: "Rita Mangsari" });
     await expect(first).toBeVisible();
-    await expect(first).toContainText("Wafat: 12 Maret 2021");
     await expect(first).toContainText("Ahli Waris: Ujang Supardi");
     // Nama ahli waris kosong => baris "Ahli Waris" tidak ditampilkan.
     await expect(page.getByRole("article").filter({ hasText: "Siti Rita" })).not.toContainText("Ahli Waris");
-    await expect(first).toContainText("A-032");
-    await expect(first).toContainText("032");
+    // Tanggal wafat, blok, nomor & kode hanya di halaman Detail.
+    await expect(first).not.toContainText("12 Maret 2021");
+    await expect(first).not.toContainText("A-032");
+    await expect(first).not.toContainText(/Wafat|Blok|Nomor|Kode/);
     await expect(first.getByRole("link", { name: /Detail/ })).toHaveAttribute("href", "/makam/A-032");
     await expect(first.getByRole("link", { name: /Lihat Posisi/ })).toHaveAttribute("href", "/makam/A-032/lokasi");
     await expect(page.getByRole("status").filter({ hasText: "Ditemukan 2 hasil" })).toBeVisible();
