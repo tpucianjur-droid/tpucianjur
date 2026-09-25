@@ -181,7 +181,7 @@ test.describe("Admin", () => {
     await row.getByRole("link", { name: /^Detail/ }).click();
     await expect(page.getByRole("heading", { name: "Detail Data Makam" })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/makam\/[0-9a-f-]{36}\?back=/);
-    for (const text of [code, name, "Waris Uji", "081234567890", "Kec. Cianjur", "Lokasi Makam", "Catatan Verifikasi / Status Data"]) {
+    for (const text of [code, name, "Waris Uji", "081234567890", "Kec. Cianjur", "Lokasi Makam", "Foto Makam", "Belum ada foto makam", "Status / Verifikasi"]) {
       await expect(page.getByText(text, { exact: false }).first()).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

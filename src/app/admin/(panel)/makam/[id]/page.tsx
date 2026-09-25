@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, FileText, Hash, Map as MapIcon, MapPin, Pencil, SearchX, User, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Hash, ImageIcon, Map as MapIcon, MapPin, Pencil, SearchX, ShieldCheck, User, Users } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/admin-ui";
 import { DeleteGraveButton } from "@/components/admin/delete-grave-button";
+import { GravePhotoPreview } from "@/components/admin/grave-photo-preview";
 import { LinkButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/components/ui/cn";
@@ -19,6 +20,7 @@ const EMPTY = "Belum diisi";
 
 /**
  * Detail Makam versi Admin: berbeda dari detail publik, telepon & alamat ahli waris serta status verifikasi per field ditampilkan.
+ * Foto punya card sendiri (preview + "Lihat Foto", atau placeholder bila belum ada).
  * Hanya membaca data; Edit & Hapus memakai alur yang sama dengan daftar (kembali ke Data Makam setelah berhasil).
  */
 export default async function AdminGraveDetailPage({ params, searchParams }: PageProps<"/admin/makam/[id]">) {
@@ -60,6 +62,8 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
   const number = padGraveNumber(grave.grave_number);
   const location = settings?.name ?? `${APP.shortName} ${APP.subtitle}`;
   const photoUrl = photoPublicUrl(grave.photo_path);
+  // Baris / Posisi hanya bila tercatat di denah (tidak dikarang).
+  const position = grave.visual_row !== null && grave.visual_column !== null ? `Baris ${grave.visual_row}, Kolom ${grave.visual_column}` : null;
   const back = `back=${encodeURIComponent(backHref)}`;
 
   return (
@@ -115,11 +119,38 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* B. Data almarhum */}
-        <Section icon={<User className="size-5" />} title="Data Almarhum">
-          <div className="flex items-start gap-4">
-            <InfoList className="flex-1">
+      {/*
+        Desktop: kolom kiri Foto + Lokasi, kolom kanan Almarhum + Ahli Waris + Status.
+        HP: kolom memakai `contents` sehingga semua card menjadi satu tumpukan yang diurutkan `order`
+        (Foto → Almarhum → Ahli Waris → Lokasi → Status).
+      */}
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
+          {/* B. Foto makam (opsional) */}
+          <Section icon={<ImageIcon className="size-5" />} title="Foto Makam" className="order-1">
+            <GravePhotoPreview photoUrl={photoUrl} name={grave.deceased_name} />
+          </Section>
+
+          {/* E. Lokasi makam */}
+          <Section icon={<MapIcon className="size-5" />} title="Lokasi Makam" className="order-4">
+            <InfoList divided>
+              <InfoRow label="Blok" flagged={grave.verify_location}>
+                {grave.blocks ? grave.blocks.code : orEmpty(null)}
+              </InfoRow>
+              <InfoRow label="Nomor" flagged={grave.verify_location}>
+                {number}
+              </InfoRow>
+              <InfoRow label="Kode Makam">{grave.grave_code}</InfoRow>
+              <InfoRow label="Lokasi TPU">{location}</InfoRow>
+              {position && <InfoRow label="Baris / Posisi">{position}</InfoRow>}
+            </InfoList>
+          </Section>
+        </div>
+
+        <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
+          {/* C. Data almarhum */}
+          <Section icon={<User className="size-5" />} title="Data Almarhum" className="order-2">
+            <InfoList>
               <InfoRow label="Nama" flagged={grave.verify_deceased_name}>
                 {grave.deceased_name}
               </InfoRow>
@@ -129,114 +160,75 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
                   <span className="block text-sm font-normal text-muted">Arti tanggal belum dipastikan</span>
                 )}
               </InfoRow>
-              {!photoUrl && (
-                <InfoRow label="Foto">
-                  <span className="font-normal text-muted">Belum ada</span>
+            </InfoList>
+          </Section>
+
+          {/* D. Data ahli waris (lengkap — hanya di Admin) */}
+          <Section icon={<Users className="size-5" />} title="Data Ahli Waris" className="order-3">
+            <InfoList>
+              <InfoRow label="Nama Ahli Waris" flagged={grave.verify_heir_name}>
+                {orEmpty(grave.heir_name)}
+              </InfoRow>
+              <InfoRow label="Nomor Telepon" flagged={grave.verify_heir_phone}>
+                {grave.heir_phone?.trim() ? (
+                  <a href={`tel:${grave.heir_phone.replace(/[^\d+]/g, "")}`} className="text-primary hover:underline">
+                    {grave.heir_phone}
+                  </a>
+                ) : (
+                  orEmpty(null)
+                )}
+              </InfoRow>
+              <InfoRow label="Alamat" flagged={grave.verify_heir_address}>
+                <span className="whitespace-pre-line">{orEmpty(grave.heir_address)}</span>
+              </InfoRow>
+            </InfoList>
+          </Section>
+
+          {/* F. Status / verifikasi */}
+          <Section icon={<ShieldCheck className="size-5" />} title="Status / Verifikasi" className="order-5">
+            <InfoList>
+              <InfoRow label="Status">
+                <DetailStatusPill needs={needs} size="sm" />
+              </InfoRow>
+              {grave.updated_at && <InfoRow label="Terakhir diperbarui">{formatDateTime(grave.updated_at)}</InfoRow>}
+              <InfoRow label="Tampil di publik">
+                {grave.is_public && !grave.archived_at ? "Ya" : <span className="text-gold">Tidak</span>}
+              </InfoRow>
+              {grave.transcription_notes?.trim() && (
+                <InfoRow label="Catatan">
+                  <span className="whitespace-pre-line font-normal">{grave.transcription_notes}</span>
                 </InfoRow>
               )}
             </InfoList>
-            {photoUrl && (
-              <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="shrink-0" title="Buka foto ukuran penuh">
-                {/* eslint-disable-next-line @next/next/no-img-element -- foto sudah dikompres saat upload */}
-                <img
-                  src={photoUrl}
-                  alt={`Foto makam ${grave.deceased_name}`}
-                  loading="lazy"
-                  decoding="async"
-                  width={1280}
-                  height={960}
-                  className="aspect-[4/3] w-24 rounded-xl border border-line bg-surface object-cover sm:w-32"
-                />
-              </a>
+
+            {needs && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+                <p className="flex items-start gap-2 font-semibold">
+                  <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-amber-600" aria-hidden="true" />
+                  Data makam ini belum sepenuhnya diverifikasi.
+                </p>
+                {flagged.length > 0 ? (
+                  <>
+                    <p className="mt-1 text-[0.95rem]">Field yang perlu dicek:</p>
+                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                      {flagged.map((field) => (
+                        <li key={field.key} className="rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-sm font-medium text-amber-900">
+                          {field.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="mt-1 text-[0.95rem]">Mohon lakukan pengecekan data dan dokumen ahli waris.</p>
+                )}
+              </div>
             )}
-          </div>
-        </Section>
-
-        {/* C. Data ahli waris (lengkap — hanya di Admin) */}
-        <Section icon={<Users className="size-5" />} title="Data Ahli Waris">
-          <InfoList>
-            <InfoRow label="Nama Ahli Waris" flagged={grave.verify_heir_name}>
-              {orEmpty(grave.heir_name)}
-            </InfoRow>
-            <InfoRow label="Nomor Telepon" flagged={grave.verify_heir_phone}>
-              {grave.heir_phone?.trim() ? (
-                <a href={`tel:${grave.heir_phone.replace(/[^\d+]/g, "")}`} className="text-primary hover:underline">
-                  {grave.heir_phone}
-                </a>
-              ) : (
-                orEmpty(null)
-              )}
-            </InfoRow>
-            <InfoRow label="Alamat" flagged={grave.verify_heir_address}>
-              {orEmpty(grave.heir_address)}
-            </InfoRow>
-          </InfoList>
-        </Section>
-
-        {/* D. Lokasi makam */}
-        <Section icon={<MapIcon className="size-5" />} title="Lokasi Makam">
-          <InfoList>
-            <InfoRow label="Blok" flagged={grave.verify_location}>
-              {grave.blocks ? grave.blocks.code : orEmpty(null)}
-            </InfoRow>
-            <InfoRow label="Nomor" flagged={grave.verify_location}>
-              {number}
-            </InfoRow>
-            {grave.visual_row !== null && <InfoRow label="Baris">{grave.visual_row}</InfoRow>}
-            <InfoRow label="Kode Makam">{grave.grave_code}</InfoRow>
-            <InfoRow label="Lokasi TPU">{location}</InfoRow>
-          </InfoList>
-        </Section>
-
-        {/* E. Status / verifikasi */}
-        <Section icon={<FileText className="size-5" />} title="Catatan Verifikasi / Status Data">
-          {needs ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
-              <p className="flex items-start gap-2 font-semibold">
-                <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-amber-600" aria-hidden="true" />
-                Data makam ini belum sepenuhnya diverifikasi.
-              </p>
-              {flagged.length > 0 ? (
-                <>
-                  <p className="mt-1 text-[0.95rem]">Field yang perlu dicek:</p>
-                  <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                    {flagged.map((field) => (
-                      <li key={field.key} className="rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-sm font-medium text-amber-900">
-                        {field.label}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="mt-1 text-[0.95rem]">Mohon lakukan pengecekan data dan dokumen ahli waris.</p>
-              )}
-            </div>
-          ) : (
-            <p className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 font-semibold text-primary">
-              <CheckCircle2 className="mt-0.5 size-4.5 shrink-0" aria-hidden="true" />
-              Semua data sudah terverifikasi.
-            </p>
-          )}
-
-          <InfoList className="mt-4">
-            <InfoRow label="Status">{needs ? STATUS_LABEL.NEEDS_VERIFICATION : STATUS_LABEL.VERIFIED}</InfoRow>
-            <InfoRow label="Tampil di publik">
-              {grave.is_public && !grave.archived_at ? "Ya" : <span className="text-gold">Tidak</span>}
-            </InfoRow>
-            {grave.transcription_notes?.trim() && <InfoRow label="Catatan">{grave.transcription_notes}</InfoRow>}
-          </InfoList>
-
-          {grave.updated_at && (
-            <p className="mt-4 flex items-center gap-1.5 text-sm text-muted">
-              <Clock className="size-4 shrink-0" aria-hidden="true" />
-              Terakhir diperbarui: {formatDateTime(grave.updated_at)}
-            </p>
-          )}
-        </Section>
+          </Section>
+        </div>
       </div>
 
-      {/* Aksi: HP = Edit/Hapus berdampingan, Kembali full width di bawah. Desktop = Kembali kiri, Edit/Hapus kanan. */}
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Aksi: HP = Edit/Hapus berdampingan, Kembali full width di bawah. Desktop = bar card, Kembali kiri, Edit/Hapus kanan. */}
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:border sm:border-line/70 sm:bg-white sm:p-4 sm:shadow-(--shadow-card)">
         <LinkButton href={backHref} variant="secondary" size="lg" className="w-full px-5 sm:w-auto" icon={<ArrowLeft className="size-5" aria-hidden="true" />}>
           Kembali ke Daftar
         </LinkButton>
@@ -269,9 +261,9 @@ function orEmpty(value: string | null | undefined): ReactNode {
   return value?.trim() ? value : <span className="font-normal text-muted">{EMPTY}</span>;
 }
 
-function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+function Section({ icon, title, className, children }: { icon: ReactNode; title: string; className?: string; children: ReactNode }) {
   return (
-    <Card className="min-w-0 p-5 sm:p-6">
+    <Card className={cn("min-w-0 p-4 sm:p-6", className)}>
       <h2 className="mb-4 flex items-center gap-3 text-lg font-bold text-ink">
         <SoftIcon className="size-9">{icon}</SoftIcon>
         {title}
@@ -281,8 +273,21 @@ function Section({ icon, title, children }: { icon: ReactNode; title: string; ch
   );
 }
 
-function InfoList({ children, className }: { children: ReactNode; className?: string }) {
-  return <dl className={cn("grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:grid-cols-[9.5rem_minmax(0,1fr)]", className)}>{children}</dl>;
+/** `divided` = garis tipis antar baris (card Lokasi Makam, mengikuti referensi). */
+function InfoList({ children, className, divided = false }: { children: ReactNode; className?: string; divided?: boolean }) {
+  return (
+    <dl
+      className={cn(
+        "grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[9.5rem_minmax(0,1fr)]",
+        divided
+          ? "[&>dd]:border-b [&>dd]:border-line/70 [&>dd]:py-2 [&>dd:last-of-type]:border-b-0 [&>dt]:border-b [&>dt]:border-line/70 [&>dt]:py-2 [&>dt:last-of-type]:border-b-0"
+          : "gap-y-2.5",
+        className,
+      )}
+    >
+      {children}
+    </dl>
+  );
 }
 
 /** Baris label : nilai. `flagged` = field ini masih perlu dicek (ditandai amber + teks, tidak hanya warna). */
@@ -311,11 +316,12 @@ function SoftIcon({ className, children }: { className: string; children: ReactN
   );
 }
 
-function DetailStatusPill({ needs }: { needs: boolean }) {
+function DetailStatusPill({ needs, size = "md" }: { needs: boolean; size?: "sm" | "md" }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-sm font-semibold",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border font-semibold",
+        size === "sm" ? "px-2.5 py-0.5 text-[0.8rem]" : "px-3 py-1 text-sm",
         needs ? "border-amber-200 bg-amber-50 text-amber-800" : "border-primary/20 bg-primary-soft text-primary",
       )}
     >
