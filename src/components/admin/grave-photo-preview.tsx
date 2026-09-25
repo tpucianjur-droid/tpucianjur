@@ -1,7 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Eye, ImageIcon, X } from "lucide-react";
+import Image from "next/image";
+import { Eye, X } from "lucide-react";
+import { TPU_ASSETS } from "@/lib/assets";
 
 type Props = {
   /** URL publik foto (sudah dikompres saat upload: WebP <= 1280px). `null` = belum ada foto. */
@@ -11,10 +13,11 @@ type Props = {
 
 /**
  * Isi card "Foto Makam" di Detail Admin: preview + "Lihat Foto" (dialog native, tanpa library).
- * Rasio: HP melebar (16:10 → 2:1), tablet+desktop potret 3:4 mengikuti kolom kiri yang sempit.
- * Tanpa foto atau foto gagal dimuat -> placeholder dengan ukuran sama, agar layout tidak bergeser.
+ * Rasio: HP melebar (16:10 → 2:1), tablet potret 3:4, desktop lebar 4:5 agar tidak terlalu tinggi.
+ * Tanpa foto atau foto gagal dimuat -> gambar default makam (aset placeholder) dengan ukuran sama,
+ * agar card tetap berisi dan layout tidak bergeser. Gambar default bukan foto asli, jadi tanpa "Lihat Foto".
  */
-const FRAME = "aspect-[16/10] w-full sm:aspect-[2/1] md:aspect-[3/4]";
+const FRAME = "aspect-[16/10] w-full sm:aspect-[2/1] md:aspect-[3/4] xl:aspect-[4/5]";
 
 export function GravePhotoPreview({ photoUrl, name }: Props) {
   const titleId = useId();
@@ -23,17 +26,22 @@ export function GravePhotoPreview({ photoUrl, name }: Props) {
 
   if (!photoUrl || failed) {
     return (
-      <div
-        className={`${FRAME} flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/25 bg-linear-to-b from-sage/60 to-sage/20 px-5 text-center`}
+      <figure
+        className={`${FRAME} relative flex items-center justify-center overflow-hidden rounded-xl border border-line bg-linear-to-b from-sage/70 to-surface pb-9`}
       >
-        <span className="flex size-14 items-center justify-center rounded-full bg-white text-primary shadow-sm ring-1 ring-primary/10" aria-hidden="true">
-          <ImageIcon className="size-6" />
-        </span>
-        <div className="space-y-1">
-          <p className="font-semibold text-ink">{failed ? "Foto makam gagal dimuat" : "Belum ada foto makam"}</p>
-          <p className="text-sm text-muted">{failed ? "Coba muat ulang halaman ini." : "Foto dapat ditambahkan melalui Edit Data."}</p>
-        </div>
-      </div>
+        {/* Ilustrasi transparan: object-contain supaya nisan tidak terpotong di bingkai mana pun. */}
+        <Image
+          src={TPU_ASSETS.placeholderMakam}
+          alt=""
+          width={512}
+          height={512}
+          sizes="(min-width: 768px) 360px, 60vw"
+          className="h-[85%] w-auto max-w-[85%] object-contain"
+        />
+        <figcaption className="absolute inset-x-0 bottom-0 bg-white/85 px-3 py-2 text-center text-sm font-medium text-muted">
+          {failed ? "Foto makam gagal dimuat" : "Belum ada foto makam"}
+        </figcaption>
+      </figure>
     );
   }
 

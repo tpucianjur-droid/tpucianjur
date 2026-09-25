@@ -33,7 +33,7 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
   // Bukan 404 global: halaman ini juga dimuat ulang tepat setelah data dihapus (sebelum kembali ke daftar).
   if (!grave) {
     return (
-      <div className="max-w-6xl">
+      <div className="w-full">
         {header}
         <EmptyState
           icon={<SearchX className="size-6" />}
@@ -59,7 +59,7 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
   const back = `back=${encodeURIComponent(backHref)}`;
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       {header}
 
       {grave.archived_at && (
@@ -68,7 +68,7 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-5">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-5 xl:gap-6">
         {/* Foto makam (opsional). Card ikut setinggi kolom kanan; foto tetap menempel di atas saat digulir. */}
         <Section icon={<ImageIcon className="size-5" />} title="Foto Makam">
           <div className="md:sticky md:top-5">
