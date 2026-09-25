@@ -19,6 +19,7 @@
 /test-results/
 /playwright-report/
 /out/
+/recovery/
 
 # production
 /build

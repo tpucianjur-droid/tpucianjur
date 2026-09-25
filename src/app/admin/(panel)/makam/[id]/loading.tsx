@@ -1,34 +1,45 @@
 import { Skeleton } from "@/components/ui/feedback";
-import { AdminHeaderSkeleton, LoadingRegion } from "@/components/ui/skeletons";
+import { LoadingRegion } from "@/components/ui/skeletons";
 
+/** Kerangka mengikuti layout Detail: Foto di kiri, card informasi bertumpuk di kanan (HP: satu tumpukan). */
 export default function Loading() {
   return (
     <LoadingRegion label="Memuat detail data makam" className="max-w-6xl">
-      <AdminHeaderSkeleton />
-      <div className="mb-4 flex items-center gap-4 rounded-2xl border border-line/70 bg-white p-5 sm:p-6" aria-hidden="true">
-        <Skeleton className="size-14 rounded-full sm:size-16" />
-        <div className="flex-1 space-y-2.5">
-          <Skeleton className="h-3.5 w-24" />
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-40" />
+      <div className="mb-5 flex flex-col items-start gap-3 sm:mb-6 sm:flex-row-reverse sm:justify-between" aria-hidden="true">
+        <Skeleton className="h-10 w-40 rounded-xl sm:h-11 sm:w-44" />
+        <div className="space-y-2.5">
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-4.5 w-80 max-w-full" />
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2" aria-hidden="true">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="space-y-4 rounded-2xl border border-line/70 bg-white p-5 sm:p-6">
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-full" />
-              <Skeleton className="h-5 w-40" />
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-5" aria-hidden="true">
+        <div className="space-y-3 rounded-2xl border border-line/70 bg-white p-4 sm:p-5 lg:p-6">
+          <SectionTitleSkeleton />
+          <Skeleton className="aspect-[16/10] w-full rounded-xl sm:aspect-[2/1] md:aspect-[3/4]" />
+        </div>
+        <div className="flex flex-col gap-4">
+          {[2, 3, 4, 3].map((rows, i) => (
+            <div key={i} className="space-y-4 rounded-2xl border border-line/70 bg-white p-4 sm:p-5 lg:p-6">
+              <SectionTitleSkeleton />
+              {Array.from({ length: rows }, (_, j) => (
+                <div key={j} className="flex gap-3 sm:gap-4">
+                  <Skeleton className="h-4 w-24 sm:w-36" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              ))}
             </div>
-            {[0, 1, 2].map((j) => (
-              <div key={j} className="flex gap-3">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 flex-1" />
-              </div>
-            ))}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </LoadingRegion>
+  );
+}
+
+function SectionTitleSkeleton() {
+  return (
+    <div className="flex items-center gap-3">
+      <Skeleton className="size-9 rounded-full sm:size-10" />
+      <Skeleton className="h-5 w-36" />
+    </div>
   );
 }

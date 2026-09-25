@@ -10,9 +10,12 @@ type Props = {
 };
 
 /**
- * Isi card "Foto Makam" di Detail Admin: preview 4:3 + "Lihat Foto" (dialog native, tanpa library).
- * Tanpa foto atau foto gagal dimuat -> placeholder ringan.
+ * Isi card "Foto Makam" di Detail Admin: preview + "Lihat Foto" (dialog native, tanpa library).
+ * Rasio: HP melebar (16:10 → 2:1), tablet+desktop potret 3:4 mengikuti kolom kiri yang sempit.
+ * Tanpa foto atau foto gagal dimuat -> placeholder dengan ukuran sama, agar layout tidak bergeser.
  */
+const FRAME = "aspect-[16/10] w-full sm:aspect-[2/1] md:aspect-[3/4]";
+
 export function GravePhotoPreview({ photoUrl, name }: Props) {
   const titleId = useId();
   const [failed, setFailed] = useState(false);
@@ -20,11 +23,16 @@ export function GravePhotoPreview({ photoUrl, name }: Props) {
 
   if (!photoUrl || failed) {
     return (
-      <div className="flex h-44 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-sage/50 px-4 text-center sm:h-52">
-        <span className="flex size-12 items-center justify-center rounded-full bg-white/80 text-primary" aria-hidden="true">
+      <div
+        className={`${FRAME} flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/25 bg-linear-to-b from-sage/60 to-sage/20 px-5 text-center`}
+      >
+        <span className="flex size-14 items-center justify-center rounded-full bg-white text-primary shadow-sm ring-1 ring-primary/10" aria-hidden="true">
           <ImageIcon className="size-6" />
         </span>
-        <p className="text-[0.95rem] font-medium text-muted">{failed ? "Foto makam gagal dimuat" : "Belum ada foto makam"}</p>
+        <div className="space-y-1">
+          <p className="font-semibold text-ink">{failed ? "Foto makam gagal dimuat" : "Belum ada foto makam"}</p>
+          <p className="text-sm text-muted">{failed ? "Coba muat ulang halaman ini." : "Foto dapat ditambahkan melalui Edit Data."}</p>
+        </div>
       </div>
     );
   }
@@ -43,7 +51,7 @@ export function GravePhotoPreview({ photoUrl, name }: Props) {
           width={1280}
           height={960}
           onError={() => setFailed(true)}
-          className="aspect-[16/10] w-full object-cover sm:aspect-[4/3]"
+          className={`${FRAME} block object-cover`}
         />
         <button
           type="button"

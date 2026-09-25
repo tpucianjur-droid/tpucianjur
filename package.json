@@ -14,7 +14,9 @@
     "db:setup-sql": "node scripts/build-setup-sql.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "test:e2e:live": "playwright test --config playwright.live.config.ts",
-    "test:security:live": "node scripts/live-security-check.mjs"
+    "test:e2e:live:write": "node scripts/run-live-write-tests.mjs e2e --confirm-production-writes",
+    "test:security:live": "node scripts/live-security-check.mjs",
+    "test:security:live:write": "node scripts/run-live-write-tests.mjs security --confirm-production-writes"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

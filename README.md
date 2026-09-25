@@ -42,7 +42,7 @@ Salin `.env.example` menjadi `.env.local`, lalu isi:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ya | `sb_publishable_…` (atau isi `NEXT_PUBLIC_SUPABASE_ANON_KEY` untuk legacy anon key) |
 | `NEXT_PUBLIC_SITE_URL` | tidak | URL production untuk metadata |
 | `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` | tidak | Hanya untuk tes live: akun uji yang terdaftar di `admin_users` |
-| `E2E_USER_EMAIL`, `E2E_USER_PASSWORD` | tidak | Hanya untuk `test:security:live`: akun uji login yang **bukan** Admin |
+| `E2E_USER_EMAIL`, `E2E_USER_PASSWORD` | tidak | Hanya untuk `test:security:live:write`: akun uji login yang **bukan** Admin |
 
 Service-role key **tidak dibutuhkan** dan jangan pernah dimasukkan ke aplikasi/Vercel.
 
@@ -67,14 +67,17 @@ Tanpa `.env.local`, aplikasi tetap berjalan: halaman publik menampilkan pesan "D
 ```bash
 npm run lint         # ESLint
 npm run typecheck    # next typegen + tsc --noEmit
-npm run test         # Vitest (unit, 54 tes)
+npm run test         # Vitest (unit, 91 tes)
 npm run build        # production build
 npm run test:e2e     # Playwright: build .next-e2e + fake Supabase in-memory (tanpa DB/Docker)
-npm run test:e2e:live  # Playwright terhadap Supabase online (.env.local, setelah npm run build)
-npm run test:security:live  # audit RLS/Storage di level API: anon, login non-admin, Admin (Supabase online)
+npm run test:e2e:live  # pemeriksaan READ-ONLY terhadap Supabase online (.env.local, setelah npm run build)
+npm run test:e2e:live:write  # OPT-IN: alur Admin membuat/mengarsipkan data uji hosted
+npm run test:security:live:write  # OPT-IN: audit RLS/Storage membuat lalu menghapus data uji hosted
 ```
 
 `test:e2e` memakai `tests/e2e/fake-supabase.mjs` — server tiruan PostgREST/Auth/Storage berisi 149 data CSV (in-memory) sehingga alur publik & Admin dapat diuji di browser (desktop 1366px & Pixel 7). Storage tiruan selalu menolak upload untuk membuktikan data tetap tersimpan saat foto gagal. Instal browser sekali: `npx playwright install chromium`.
+
+Perintah `npm run check`, `npm run test`, dan `npm run test:e2e` tidak membaca atau menulis Supabase hosted. Suite live yang melakukan write diblokir dengan dua guard (`ALLOW_LIVE_WRITE_TESTS=1` dan argumen konfirmasi) dan hanya dibuka oleh perintah bernama `*:live:write`; jangan jalankan tanpa permintaan eksplisit untuk menulis ke production.
 
 ## 6. Struktur
 

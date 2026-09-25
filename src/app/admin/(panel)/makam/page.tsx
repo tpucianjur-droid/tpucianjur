@@ -2,19 +2,13 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, Plus, SearchX } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/admin-ui";
 import { ExportMenu } from "@/components/admin/export-button";
-import { buildListHref, GraveList, Pagination } from "@/components/admin/grave-list";
+import { GraveList, Pagination } from "@/components/admin/grave-list";
 import { ListToolbar } from "@/components/admin/list-toolbar";
 import { LinkButton } from "@/components/ui/button";
 import { Alert, EmptyState } from "@/components/ui/feedback";
 import { ADMIN } from "@/lib/config";
-import {
-  countNeedsVerification,
-  getAdminBlocks,
-  listGraves,
-  LIST_STATUS_OPTIONS,
-  parseListFilters,
-  type GraveListFilters,
-} from "@/lib/data/admin";
+import { buildListHref, buildStatusTabs } from "@/lib/admin/list-filters";
+import { countNeedsVerification, getAdminBlocks, listGraves, parseListFilters, type GraveListFilters } from "@/lib/data/admin";
 import { formatNumber } from "@/lib/format";
 import { VERIFY_FIELDS } from "@/lib/graves/verification";
 
@@ -66,10 +60,8 @@ export default async function GraveListPage({ searchParams }: PageProps<"/admin/
         status={filters.status}
         field={filters.field}
         blocks={blocks.map((b) => ({ value: b.id, label: b.name }))}
-        statuses={LIST_STATUS_OPTIONS.map((o) => ({
-          value: o.value,
-          label: o.value === "needs_verification" && needsCount > 0 ? `${o.label} (${formatNumber(needsCount)})` : o.label,
-        }))}
+        statusTabs={buildStatusTabs("/admin/makam", filters)}
+        needsCount={needsCount}
         fields={needsMode ? VERIFY_FIELDS.map((f) => ({ value: f.key, label: f.label })) : null}
         filtered={filtered}
       />

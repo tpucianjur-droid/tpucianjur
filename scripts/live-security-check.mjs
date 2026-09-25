@@ -1,9 +1,15 @@
 // Audit keamanan LIVE terhadap Supabase HOSTED di level database/API (PostgREST, Auth, Storage) — bukan UI.
 // Hanya memakai publishable key + akun uji dari .env.local (E2E_ADMIN_* terdaftar di admin_users, E2E_USER_* bukan Admin).
 // Tidak memakai service-role/secret key. Data uji dibuat di Blok D lalu dihapus; 149 data awal tidak diubah.
-// Jalankan: npm run test:security:live
+// Jalankan hanya lewat: npm run test:security:live:write
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
+if (process.env.ALLOW_LIVE_WRITE_TESTS !== "1" || !process.argv.includes("--confirm-production-writes")) {
+  throw new Error(
+    "DIBLOKIR: audit ini menulis ke Supabase hosted. Gunakan npm run test:security:live:write hanya setelah izin eksplisit.",
+  );
+}
 
 const envPath = join(process.cwd(), ".env.local");
 const fileEnv = existsSync(envPath)

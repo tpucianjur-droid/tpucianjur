@@ -77,8 +77,87 @@ test.describe("Admin", () => {
     const url = new URL(page.url());
     expect(url.searchParams.get("status")).toBe("needs_verification");
     expect(url.searchParams.get("q")).toBe("A-0");
-    await expect(page.getByRole("combobox", { name: "Status" })).toHaveValue("needs_verification");
+    await expect(
+      page.getByRole("navigation", { name: "Filter status" }).getByRole("link", { name: /^Perlu Verifikasi/ }),
+    ).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("combobox", { name: "Field yang perlu dicek" })).toBeVisible();
+  });
+
+  test("filter status: tombol langsung terlihat (bukan dropdown), bisa dipadukan dengan cari & blok", async ({ page }, info) => {
+    // Data arsip milik test ini sendiri (Blok D) agar filter Arsip punya hasil pasti.
+    const number = info.project.name === "desktop" ? "57" : "58";
+    const archivedCode = `D-0${number}`;
+    await login(page);
+    await page.goto("/admin/makam/tambah");
+    await page.getByLabel("Nama yang dimakamkan").fill(`Uji Arsip ${info.project.name}`);
+    await page.locator("#f-block_id").selectOption({ label: "Blok D" });
+    await page.getByLabel("Nomor makam").fill(number);
+    await page.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/makam$/);
+    await page.goto(`/admin/makam?q=${archivedCode}`);
+    await page.getByRole("link", { name: /^Edit/ }).locator("visible=true").first().click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Arsipkan data" }).click();
+    await expect(page.getByText(/dipindahkan ke arsip/).first()).toBeVisible();
+
+    // Semua pilihan status langsung terlihat sebagai tombol besar; tidak ada dropdown status.
+    await page.goto("/admin/makam?page=2");
+    const tabs = page.getByRole("navigation", { name: "Filter status" });
+    const tab = (name: string | RegExp) => tabs.getByRole("link", { name });
+    await expect(tabs.getByRole("link")).toHaveText([/^Semua$/, /^Perlu Verifikasi/, /^Terverifikasi$/, /^Arsip$/]);
+    for (const link of await tabs.getByRole("link").all()) {
+      await expect(link).toBeVisible();
+      expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(tab("Semua")).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('select[name="status"]')).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Status" })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    // Pindah status => halaman kembali ke 1.
+    await tab("Terverifikasi").click();
+    await expect(page).toHaveURL(/\/admin\/makam\?status=verified$/);
+    await expect(tab("Terverifikasi")).toHaveAttribute("aria-current", "page");
+
+    // Cari tetap membawa status; status tetap membawa kata kunci. A-001 = perlu verifikasi di data awal.
+    await page.getByLabel("Cari kode, nama, atau ahli waris").fill("A-001");
+    await page.getByLabel("Cari kode, nama, atau ahli waris").press("Enter");
+    await expect(page).toHaveURL(/q=A-001/);
+    expect(new URL(page.url()).searchParams.get("status")).toBe("verified");
+    await expect(page.getByText("0 data ditemukan")).toBeVisible();
+    await tab(/^Perlu Verifikasi/).click();
+    await expect(page).toHaveURL(/status=needs_verification/);
+    expect(new URL(page.url()).searchParams.get("q")).toBe("A-001");
+    await expect(page.getByText("1 data masih perlu verifikasi")).toBeVisible();
+    await tab("Semua").click();
+    await expect(page).toHaveURL(/\/admin\/makam\?q=A-001$/);
+    await expect(page.getByText("1 data ditemukan")).toBeVisible();
+
+    // A-006 = sudah terverifikasi di data awal.
+    await page.goto("/admin/makam?q=A-006");
+    await tab("Terverifikasi").click();
+    await expect(page).toHaveURL(/status=verified/);
+    await expect(page.getByText("1 data ditemukan")).toBeVisible();
+    await tab(/^Perlu Verifikasi/).click();
+    await expect(page.getByText("0 data masih perlu verifikasi")).toBeVisible();
+
+    // Filter blok ikut terbawa saat status diganti.
+    await page.getByLabel("Blok", { exact: true }).selectOption({ label: "Blok A" });
+    await expect(page).toHaveURL(/blok=/);
+    await tab("Terverifikasi").click();
+    await expect(page).toHaveURL(/status=verified/);
+    const url = new URL(page.url());
+    expect(url.searchParams.get("status")).toBe("verified");
+    expect(url.searchParams.get("blok")).toBeTruthy();
+    expect(url.searchParams.get("q")).toBe("A-006");
+
+    // Arsip: hanya data yang diarsipkan.
+    await page.goto(`/admin/makam?q=${archivedCode}`);
+    await expect(page.getByText("0 data ditemukan")).toBeVisible();
+    await tab("Arsip").click();
+    await expect(page).toHaveURL(/status=archived/);
+    await expect(page.getByText("1 data ditemukan")).toBeVisible();
+    await expect(page.locator("tr, li").filter({ hasText: archivedCode }).locator("visible=true").first()).toBeVisible();
   });
 
   test("tambah makam tanpa foto: kode dibuat otomatis dari blok + nomor", async ({ page }, info) => {

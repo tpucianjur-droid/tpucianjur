@@ -24,18 +24,21 @@ function loadEnvLocal(): Record<string, string> {
 const env = { ...loadEnvLocal(), ...process.env } as Record<string, string | undefined>;
 const hasSupabase = Boolean(env.NEXT_PUBLIC_SUPABASE_URL && !env.NEXT_PUBLIC_SUPABASE_URL.includes("YOUR-PROJECT-REF"));
 const hasAdmin = Boolean(env.E2E_ADMIN_EMAIL && env.E2E_ADMIN_PASSWORD);
+// Sengaja hanya membaca process.env: opt-in tulis tidak boleh tersimpan permanen di .env.local.
+const allowLiveWrites = process.env.ALLOW_LIVE_WRITE_TESTS === "1";
 
 test.describe("Publik (Supabase hosted)", () => {
   test.skip(!hasSupabase, "Supabase hosted belum dikonfigurasi di .env.local");
 
   test("partial search 'sutiar' menampilkan nama ahli waris tanpa membuka data privat", async ({ page }) => {
     await page.goto("/cari-makam?q=sutiar");
-    const card = page.getByRole("article").filter({ hasText: "Sutiarna" });
-    await expect(card).toContainText("A-001");
+    const card = page.getByRole("article").filter({ hasText: "Nana Sutiarna" });
     await expect(card).toContainText("Ahli Waris: Indra Mawana Yusuf");
-    await card.getByRole("link", { name: /Detail/ }).click();
+    const detail = card.getByRole("link", { name: /Detail/ });
+    await expect(detail).toHaveAttribute("href", "/makam/A-001");
+    await detail.click();
     await expect(page).toHaveURL(/\/makam\/A-001$/);
-    await expect(page.getByRole("heading", { name: "Sutiarna" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Nana Sutiarna" })).toBeVisible();
     await expect(page.getByText("17 Agustus 2024")).toBeVisible();
     const mainText = await page.getByRole("main").innerText();
     // Detail menampilkan nama ahli waris saja, tanpa telepon/alamat.
@@ -62,7 +65,7 @@ test.describe("Publik (Supabase hosted)", () => {
     await page.goto("/makam/A-032/lokasi");
     const map = page.getByRole("img", { name: /ditandai hijau/ });
     await expect(map).toBeVisible();
-    await expect(page.getByLabel("Legenda denah")).toContainText("Makam yang dicari");
+    await expect(page.getByLabel("Legenda denah")).toContainText("Dipilih");
     await page.getByRole("button", { name: "Perbesar" }).click();
     await page.getByRole("button", { name: "Tampilkan seluruh blok" }).click();
   });
@@ -73,8 +76,34 @@ test.describe("Publik (Supabase hosted)", () => {
   });
 });
 
-test.describe("Admin (Supabase hosted)", () => {
+test.describe("Admin read-only (Supabase hosted)", () => {
   test.skip(!hasSupabase || !hasAdmin, "Butuh .env.local + E2E_ADMIN_EMAIL/E2E_ADMIN_PASSWORD");
+
+  test("dashboard dan filter verifikasi mencerminkan state hosted tanpa melakukan write", async ({ page }) => {
+    await page.goto("/admin/login");
+    await page.getByLabel("Email").fill(env.E2E_ADMIN_EMAIL!);
+    await page.getByLabel("Password", { exact: true }).fill(env.E2E_ADMIN_PASSWORD!);
+    await page.getByRole("button", { name: "Masuk" }).click();
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible({ timeout: 15_000 });
+
+    const kpi = page.getByRole("region", { name: "Ringkasan utama" });
+    await expect(kpi.getByRole("link", { name: /^Total Makam 149/ })).toBeVisible();
+    await expect(kpi.getByRole("link", { name: /^Perlu Verifikasi 113/ })).toBeVisible();
+    await expect(kpi.getByRole("link", { name: /^Sudah Terverifikasi 36/ })).toBeVisible();
+
+    await page.goto("/admin/makam?status=needs_verification");
+    await expect(page.getByRole("status").filter({ hasText: "113 data masih perlu verifikasi" })).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Filter status" }).getByRole("link", { name: /^Perlu Verifikasi/ }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+});
+
+test.describe("Admin (Supabase hosted)", () => {
+  test.skip(
+    !hasSupabase || !hasAdmin || !allowLiveWrites,
+    "Tes Admin hosted menulis data dan hanya berjalan lewat perintah live:write dengan opt-in eksplisit.",
+  );
   test.describe.configure({ mode: "serial" });
 
   test("login → tambah (tanpa foto) → field merah → verifikasi → foto gagal tidak menggagalkan simpan → arsip", async ({ page }) => {

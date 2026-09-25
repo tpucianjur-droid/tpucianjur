@@ -1,5 +1,6 @@
 import "server-only";
 import { ADMIN } from "@/lib/config";
+import { LIST_STATUS_OPTIONS, type ListStatus } from "@/lib/admin/list-filters";
 import { buildMonthlySeries, classifyActivity, rangeStartIso, type ActivityKind, type ActivitySource } from "@/lib/dashboard/stats";
 import { logError } from "@/lib/log";
 import { isVerifyFieldKey, VERIFY_FIELDS, type VerifyFieldKey } from "@/lib/graves/verification";
@@ -33,17 +34,10 @@ export type GraveListItem = Pick<
 export type GraveListFilters = {
   q: string;
   block: string | null;
-  status: "all" | "needs_verification" | "verified" | "archived";
+  status: ListStatus;
   field: VerifyFieldKey | null;
   page: number;
 };
-
-export const LIST_STATUS_OPTIONS: { value: GraveListFilters["status"]; label: string }[] = [
-  { value: "all", label: "Semua Status" },
-  { value: "needs_verification", label: "Perlu Verifikasi" },
-  { value: "verified", label: "Terverifikasi" },
-  { value: "archived", label: "Arsip" },
-];
 
 /** Ringkasan filter aktif untuk kop export, mis. ["Blok: Blok A", "Status: Terverifikasi"]. Kosong = tanpa filter. */
 export function describeListFilters(filters: GraveListFilters, blocks: Pick<BlockRow, "id" | "name">[]): string[] {

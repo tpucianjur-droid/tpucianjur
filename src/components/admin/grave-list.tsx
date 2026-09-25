@@ -215,14 +215,3 @@ function PageArrow({ href, label, children }: { href: string | null; label: stri
     </Link>
   );
 }
-
-export function buildListHref(base: string, params: Record<string, string | number | null | undefined>) {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== null && value !== undefined && value !== "" && !(key === "page" && value === 1)) {
-      search.set(key, String(value));
-    }
-  }
-  const qs = search.toString();
-  return qs ? `${base}?${qs}` : base;
-}
