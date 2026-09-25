@@ -7,7 +7,8 @@ import { GraveForm, type Notice } from "@/components/admin/grave-form";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/feedback";
 import { MESSAGES } from "@/lib/config";
-import { getAdminBlocks, getBlockGravesForEditor, getGraveAudit, getGraveForEdit, getNextNeedsVerification } from "@/lib/data/admin";
+import { resolveBackHref } from "@/lib/admin/save-flow";
+import { getAdminBlocks, getBlockGravesForEditor, getGraveAudit, getGraveForEdit } from "@/lib/data/admin";
 import { photoPublicUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 
@@ -38,19 +39,18 @@ export default async function EditGravePage({ params, searchParams }: PageProps<
   const grave = await getGraveForEdit(id);
   if (!grave) notFound();
 
-  const fromVerification = query.from === "verifikasi";
-  const [blocks, blockGraves, audit, next] = await Promise.all([
+  const [blocks, blockGraves, audit] = await Promise.all([
     getAdminBlocks(),
     grave.block_id ? getBlockGravesForEditor(grave.block_id) : Promise.resolve([]),
     getGraveAudit(grave.id),
-    fromVerification ? getNextNeedsVerification(grave.grave_code) : Promise.resolve(null),
   ]);
 
   // Keberhasilan simpan sudah diumumkan lewat toast; peringatan foto gagal tetap ditampilkan di formulir.
   const initialNotices: Notice[] = [];
   if (query.photo === "failed") initialNotices.push({ tone: "warning", message: MESSAGES.photoUploadFailed });
 
-  const backHref = fromVerification ? "/admin/makam?status=needs_verification" : "/admin/makam";
+  // Kembali ke daftar dengan filter/halaman sebelumnya (setelah Simpan/Verifikasi juga ke sini).
+  const backHref = resolveBackHref(query.back, query.from);
 
   return (
     <>
@@ -86,7 +86,6 @@ export default async function EditGravePage({ params, searchParams }: PageProps<
         blockGraves={blockGraves}
         photoUrl={photoPublicUrl(grave.photo_path)}
         backHref={backHref}
-        nextHref={next ? `/admin/makam/${next.id}/edit?from=verifikasi` : null}
         initialNotices={initialNotices}
       />
 

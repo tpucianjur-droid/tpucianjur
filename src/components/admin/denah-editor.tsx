@@ -19,7 +19,12 @@ type Props = {
   graves: (MapGrave & { verify_location: boolean })[];
 };
 
-const SOURCE_LABEL = { free: "Posisi bebas (X/Y)", grid: "Diatur manual (baris/kolom)", auto: "Otomatis dari nomor (simulasi)" } as const;
+const SOURCE_LABEL = {
+  free: "Posisi bebas (X/Y)",
+  grid: "Diatur manual (baris/kolom)",
+  layout: "Otomatis dari layout baris blok",
+  auto: "Otomatis dari nomor (simulasi)",
+} as const;
 
 /**
  * Editor posisi: pilih makam (klik di denah atau dari daftar) → klik petak kosong untuk memindahkan.

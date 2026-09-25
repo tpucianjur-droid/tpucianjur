@@ -140,32 +140,8 @@
 
 @media (hover: hover) {
   .denah-grave:hover .denah-stone:not([data-active]) {
-    fill: #bcc4c0;
+    fill: #b0cbba;
   }
-}
-
-/* Denah: tooltip HTML dengan panah yang mengikuti posisi makam (--arrow-x di-set dari JS). */
-.denah-popover::after {
-  content: "";
-  position: absolute;
-  left: var(--arrow-x, 50%);
-  width: 12px;
-  height: 12px;
-  background: inherit;
-  border: inherit;
-  transform: translateX(-50%) rotate(45deg);
-}
-
-.denah-popover[data-placement="above"]::after {
-  bottom: -7px;
-  border-top-color: transparent;
-  border-left-color: transparent;
-}
-
-.denah-popover[data-placement="below"]::after {
-  top: -7px;
-  border-bottom-color: transparent;
-  border-right-color: transparent;
 }
 
 @keyframes shimmer {

@@ -6,6 +6,8 @@ import { PageHero } from "@/components/public/page-hero";
 import { Alert, EmptyState } from "@/components/ui/feedback";
 import { Card, IconBadge } from "@/components/ui/card";
 import { getActiveBlocks, getDenahGraves } from "@/lib/data/public";
+import { getBlockLayout } from "@/lib/denah/block-layouts";
+import { resolvePosition } from "@/lib/denah/layout";
 import { parseGraveCode } from "@/lib/graves/code";
 import { normalizeBlockFilter } from "@/lib/search/normalize";
 
@@ -25,6 +27,8 @@ export default async function DenahPage({ searchParams }: PageProps<"/denah">) {
   const block = blocks.find((b) => b.code === requestedBlock) ?? blocks[0] ?? null;
   const graves = block ? await getDenahGraves(block.code) : [];
   const target = code ? (graves.find((g) => g.grave_code === code) ?? null) : null;
+  // Blok tanpa layout & tanpa posisi makam = lokasi fisik belum diketahui: jangan tampilkan denah palsu.
+  const mapped = block ? Boolean(getBlockLayout(block.code)) || graves.some((g) => resolvePosition(g, block)) : false;
 
   return (
     <>
@@ -60,13 +64,13 @@ export default async function DenahPage({ searchParams }: PageProps<"/denah">) {
                   </IconBadge>
                   <h2 className="font-serif text-xl font-semibold">Denah {block.name}</h2>
                 </div>
-                {graves.length > 0 ? (
+                {mapped ? (
                   <DenahStage>
                     <PublicDenah key={block.code} block={block} graves={graves} target={target} />
                   </DenahStage>
                 ) : (
-                  <EmptyState icon={<MapPinOff className="size-6" />} title={`Denah ${block.name} belum tersedia`}>
-                    Belum ada data makam yang dipetakan pada blok ini.
+                  <EmptyState icon={<MapPinOff className="size-6" />} title={`${block.name} belum dipetakan`}>
+                    Lokasi fisik blok ini belum dipetakan. Denah akan ditampilkan setelah pemetaan di lapangan selesai.
                   </EmptyState>
                 )}
               </>

@@ -104,13 +104,19 @@ export function usePanZoom(
     [commit, constrain, stopAnimation],
   );
 
-  const fitAll = useCallback(
-    (animate = true) => {
+  /** Tampilkan seluruh persegi (unit SVG) di layar, mis. area makam yang sudah terisi. */
+  const fitRect = useCallback(
+    (rect: ViewBox, animate = true) => {
       const aspect = container.current.height / container.current.width;
-      const w = Math.max(content.width, content.height / aspect) * 1.02;
-      apply({ x: content.width / 2 - w / 2, y: content.height / 2 - (w * aspect) / 2, w, h: w * aspect }, animate);
+      const w = Math.max(rect.w, rect.h / aspect) * 1.02;
+      apply({ x: rect.x + rect.w / 2 - w / 2, y: rect.y + rect.h / 2 - (w * aspect) / 2, w, h: w * aspect }, animate);
     },
-    [apply, content.width, content.height],
+    [apply],
+  );
+
+  const fitAll = useCallback(
+    (animate = true) => fitRect({ x: 0, y: 0, w: content.width, h: content.height }, animate),
+    [fitRect, content.width, content.height],
   );
 
   const focusOn = useCallback(
@@ -262,6 +268,7 @@ export function usePanZoom(
     zoomIn: () => zoomBy(0.7, undefined, true),
     zoomOut: () => zoomBy(1.4, undefined, true),
     fitAll,
+    fitRect,
     focusOn,
     panBy,
     onKeyDown,

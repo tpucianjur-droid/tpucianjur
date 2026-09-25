@@ -5,6 +5,13 @@ const DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
   timeZone: "UTC",
 });
 
+const DATE_SHORT_FORMAT = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 const DATETIME_FORMAT = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
   month: "short",
@@ -19,6 +26,13 @@ export function formatDate(isoDate: string | null | undefined, fallback = "Belum
   if (!isoDate) return fallback;
   const date = new Date(`${isoDate.slice(0, 10)}T00:00:00Z`);
   return Number.isNaN(date.getTime()) ? fallback : DATE_FORMAT.format(date);
+}
+
+/** "2025-02-10" => "10 Feb 2025" (untuk tabel). Tanggal kosong => fallback. */
+export function formatDateShort(isoDate: string | null | undefined, fallback = "—"): string {
+  if (!isoDate) return fallback;
+  const date = new Date(`${isoDate.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? fallback : DATE_SHORT_FORMAT.format(date).replace(/\./g, "");
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

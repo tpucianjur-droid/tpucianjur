@@ -3,8 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "./cn";
 import { Spinner } from "./spinner";
 
-type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger";
-type Size = "md" | "lg";
+type Variant = "primary" | "secondary" | "soft" | "ghost" | "danger" | "dangerSolid";
+type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover shadow-sm",
@@ -12,9 +12,11 @@ const VARIANTS: Record<Variant, string> = {
   soft: "bg-sage text-primary hover:bg-sage-strong",
   ghost: "text-primary hover:bg-primary-soft",
   danger: "bg-white text-danger border border-danger/40 hover:bg-danger-soft",
+  dangerSolid: "bg-danger text-white hover:bg-danger-hover shadow-sm",
 };
 
 const SIZES: Record<Size, string> = {
+  sm: "min-h-9 px-3 text-sm",
   md: "min-h-11 px-4 text-[0.95rem]",
   lg: "min-h-13 px-6 text-base",
 };

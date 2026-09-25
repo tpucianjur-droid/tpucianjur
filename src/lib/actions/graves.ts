@@ -96,7 +96,7 @@ export async function saveGrave(_prev: ActionResult<SavedGrave>, formData: FormD
   revalidateGravePaths(result.data.grave_code);
   return {
     status: "success",
-    message: verifyAll ? "Data tersimpan dan semua field ditandai terverifikasi." : "Data makam berhasil disimpan.",
+    message: verifyAll ? "Data makam berhasil diverifikasi." : "Data makam berhasil disimpan.",
     data: result.data,
   };
 }
@@ -123,6 +123,41 @@ export async function setArchived(graveId: string, archived: boolean): Promise<A
     status: "success",
     message: archived ? "Data dipindahkan ke arsip dan tidak tampil di halaman publik." : "Data dikembalikan dari arsip.",
   };
+}
+
+/**
+ * Hapus permanen satu data makam (hanya setelah konfirmasi di UI). Keamanan tetap dari RLS
+ * `graves_admin_delete`; riwayat tetap tercatat di audit_logs (trigger DELETE). Foto ikut dibersihkan.
+ */
+export async function deleteGrave(graveId: string): Promise<ActionResult> {
+  try {
+    await requireAdmin();
+  } catch (error) {
+    return unauthorized(error);
+  }
+  if (typeof graveId !== "string" || !/^[0-9a-f-]{36}$/i.test(graveId)) {
+    return { status: "error", message: "Data makam tidak valid." };
+  }
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase.from("graves").delete().eq("id", graveId).select("grave_code, photo_path");
+  if (error) {
+    if (isPermissionError(error)) return unauthorized(error);
+    logError("deleteGrave", error);
+    return { status: "error", message: "Data makam belum berhasil dihapus. Coba lagi." };
+  }
+  // RLS yang menolak DELETE tidak mengembalikan error, hanya 0 baris.
+  const deleted = data?.[0];
+  if (!deleted) return { status: "error", message: "Data makam tidak ditemukan atau Anda tidak memiliki izin menghapus." };
+
+  if (deleted.photo_path) {
+    const removed = await supabase.storage.from(PHOTO.bucket).remove([deleted.photo_path]);
+    if (removed.error) logError("deleteGrave.photo", removed.error);
+  }
+
+  revalidateGravePaths(deleted.grave_code);
+  revalidatePath("/denah");
+  return { status: "success", message: "Data makam berhasil dihapus." };
 }
 
 /** Unggah foto hasil kompres (maks. 1 per makam). Foto lama dihapus setelah foto baru berhasil. */

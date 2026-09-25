@@ -1,12 +1,15 @@
+import { getBlockLayout, layoutSlot } from "./block-layouts";
+
 /**
  * Posisi makam di denah internal (koordinat "sel", 1 = satu petak makam).
  * Prioritas sumber posisi:
  *   1. visual_x / visual_y  -> posisi bebas (boleh pecahan), untuk menyesuaikan kondisi lapangan
  *   2. visual_row / visual_column -> posisi grid yang diatur Admin
- *   3. otomatis dari nomor makam bila blok punya konfigurasi grid_columns (simulasi V1)
- * Tidak ada kapasitas/ukuran yang di-hard-code: semuanya dari data blok & makam.
+ *   3. layout baris blok (lib/denah/block-layouts) bila blok punya konfigurasi baris
+ *   4. otomatis dari nomor makam bila blok punya konfigurasi grid_columns (simulasi V1)
+ * Tidak ada kapasitas/ukuran yang di-hard-code: semuanya dari data blok, config layout & makam.
  */
-export type PositionSource = "free" | "grid" | "auto";
+export type PositionSource = "free" | "grid" | "layout" | "auto";
 
 export type GravePositionInput = {
   grave_number: number | null;
@@ -19,6 +22,8 @@ export type GravePositionInput = {
 export type BlockGridInput = {
   grid_rows: number | null;
   grid_columns: number | null;
+  /** Kode blok, untuk mencari layout baris (opsional). */
+  code?: string | null;
 };
 
 export type ResolvedPosition = { x: number; y: number; source: PositionSource };
@@ -30,6 +35,12 @@ export function resolvePosition(grave: GravePositionInput, block: BlockGridInput
   if (isNum(grave.visual_row) && isNum(grave.visual_column)) {
     return { x: grave.visual_column, y: grave.visual_row, source: "grid" };
   }
+  const layout = getBlockLayout(block.code);
+  if (layout) {
+    // Blok dengan layout baris tidak memakai grid otomatis (nomor di luar kapasitas = belum punya posisi).
+    const slot = layoutSlot(layout, grave.grave_number);
+    return slot ? { ...slot, source: "layout" } : null;
+  }
   const columns = block.grid_columns;
   if (isNum(columns) && columns > 0 && isNum(grave.grave_number) && grave.grave_number > 0) {
     const index = grave.grave_number - 1;
@@ -38,10 +49,11 @@ export function resolvePosition(grave: GravePositionInput, block: BlockGridInput
   return null;
 }
 
-/** Ukuran kanvas blok (dalam sel) = maksimum dari konfigurasi grid dan posisi makam terjauh. */
+/** Ukuran kanvas blok (dalam sel) = maksimum dari konfigurasi grid/layout dan posisi makam terjauh. */
 export function blockExtent(positions: ReadonlyArray<ResolvedPosition>, block: BlockGridInput) {
-  let columns = block.grid_columns ?? 0;
-  let rows = block.grid_rows ?? 0;
+  const layout = getBlockLayout(block.code);
+  let columns = layout ? layout.columns : (block.grid_columns ?? 0);
+  let rows = layout ? layout.rows.length : (block.grid_rows ?? 0);
   for (const p of positions) {
     columns = Math.max(columns, Math.ceil(p.x));
     rows = Math.max(rows, Math.ceil(p.y));
@@ -64,9 +76,10 @@ export function cellCenter(x: number, y: number) {
   return { x: origin.x + CELL.width / 2, y: origin.y + CELL.height / 2 };
 }
 
-export function canvasSize(extent: { columns: number; rows: number }) {
+/** `extraRight` = ruang tambahan di kanan (mis. label rentang nomor per baris). */
+export function canvasSize(extent: { columns: number; rows: number }, extraRight = 0) {
   return {
-    width: CELL.padding * 2 + extent.columns * CELL.width,
+    width: CELL.padding * 2 + extent.columns * CELL.width + extraRight,
     height: CELL.padding * 2 + extent.rows * CELL.height,
   };
 }

@@ -1,54 +1,95 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import type { ReactNode } from "react";
+import { ChevronLeft, ChevronRight, Hash, Layers, Pencil, SquareUser } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { LinkPendingIcon } from "@/components/ui/link-status";
 import { cn } from "@/components/ui/cn";
+import { pageList } from "@/lib/admin/pagination";
 import type { GraveListItem } from "@/lib/data/admin";
-import { formatDate } from "@/lib/format";
-import { FlaggedChips, StatusBadge } from "./admin-ui";
+import { formatDate, formatDateShort, padGraveNumber } from "@/lib/format";
+import { FlagSummary, StatusBadge } from "./admin-ui";
+import { DeleteGraveButton } from "./delete-grave-button";
 
-/** Tabel di desktop, kartu di HP. Nama berwarna merah bila field nama perlu dicek. */
-export function GraveList({ items, from }: { items: GraveListItem[]; from?: "verifikasi" }) {
-  const editHref = (id: string) => `/admin/makam/${id}/edit${from ? `?from=${from}` : ""}`;
+type Props = {
+  items: GraveListItem[];
+  /** Nomor urut baris pertama (paginasi). */
+  startIndex: number;
+  /** block_id => kode blok. */
+  blockCodes: Record<string, string>;
+  /** URL daftar saat ini (filter & halaman) agar setelah Simpan/Verifikasi kembali ke konteks yang sama. */
+  listHref: string;
+};
+
+const HEIR_EMPTY = "Belum diisi";
+
+/**
+ * Tabel di desktop lebar (xl), kartu ringkas di HP & tablet — tabel 9 kolom tidak dipaksa mengecil.
+ * Nama/tanggal/ahli waris berwarna merah bila field tersebut perlu dicek.
+ */
+export function GraveList({ items, startIndex, blockCodes, listHref }: Props) {
+  const editHref = (id: string) => `/admin/makam/${id}/edit?back=${encodeURIComponent(listHref)}`;
+  const blockOf = (grave: GraveListItem) => (grave.block_id ? (blockCodes[grave.block_id] ?? "—") : "—");
+
   return (
     <>
-      <div className="hidden overflow-hidden rounded-2xl border border-line bg-white md:block">
-        <table className="w-full text-left">
-          <thead className="bg-surface text-sm text-muted">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-semibold">Kode</th>
-              <th scope="col" className="px-4 py-3 font-semibold">Nama yang dimakamkan</th>
-              <th scope="col" className="px-4 py-3 font-semibold">Tanggal wafat</th>
-              <th scope="col" className="px-4 py-3 font-semibold">Status / field perlu dicek</th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                <span className="sr-only">Aksi</span>
-              </th>
+      <div className="hidden overflow-clip rounded-2xl border border-line bg-white xl:block">
+        <table className="w-full table-fixed text-left text-[0.925rem]">
+          <colgroup>
+            <col className="w-11" />
+            <col className="w-[6.75rem]" />
+            <col />
+            <col />
+            <col className="w-[6.75rem]" />
+            <col className="w-[3.25rem]" />
+            <col className="w-[4.25rem]" />
+            <col className="w-[9.5rem]" />
+            <col className="w-[12.25rem]" />
+          </colgroup>
+          <thead className="text-sm text-muted">
+            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:border-b [&>th]:border-line [&>th]:bg-surface [&>th]:whitespace-nowrap [&>th]:px-2.5 [&>th]:py-3 [&>th]:font-semibold">
+              <th scope="col">No.</th>
+              <th scope="col">Kode Makam</th>
+              <th scope="col">Nama</th>
+              <th scope="col">Ahli Waris</th>
+              <th scope="col">Tanggal Wafat</th>
+              <th scope="col">Blok</th>
+              <th scope="col">Nomor</th>
+              <th scope="col">Status</th>
+              <th scope="col">Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
-            {items.map((grave) => (
-              <tr key={grave.id} className="align-top hover:bg-surface/60">
-                <td className="whitespace-nowrap px-4 py-4 font-semibold">{grave.grave_code}</td>
-                <td className="px-4 py-4">
-                  <span className={cn("text-[1.0625rem] font-semibold", grave.verify_deceased_name && "text-danger")}>
+          <tbody className="divide-y divide-line [&_td]:px-2.5 [&_td]:py-3">
+            {items.map((grave, i) => (
+              <tr key={grave.id} className="align-middle hover:bg-surface/60">
+                <td className="text-muted tabular-nums">{startIndex + i}</td>
+                <td className="whitespace-nowrap font-semibold">{grave.grave_code}</td>
+                <td>
+                  <span className={cn("block break-words font-semibold text-ink", grave.verify_deceased_name && "text-danger")}>
                     {grave.deceased_name}
                   </span>
-                  {grave.heir_name && <span className="block text-sm text-muted">Ahli waris: {grave.heir_name}</span>}
-                  {!grave.is_public && <span className="block text-sm font-medium text-gold">Tidak tampil di publik</span>}
+                  {!grave.is_public && <span className="block text-xs font-medium text-gold">Tidak tampil di publik</span>}
                 </td>
-                <td className={cn("whitespace-nowrap px-4 py-4", grave.verify_death_date && "font-medium text-danger")}>
-                  {formatDate(grave.death_date, "—")}
+                <td className={cn("break-words", grave.verify_heir_name && "font-medium text-danger")}>
+                  {grave.heir_name?.trim() ? grave.heir_name : <span className="text-muted">{HEIR_EMPTY}</span>}
                 </td>
-                <td className="space-y-2 px-4 py-4">
-                  <StatusBadge status={grave.verification_status} />
-                  <FlaggedChips record={grave} />
+                <td className={cn("whitespace-nowrap", grave.verify_death_date && "font-medium text-danger")}>
+                  {formatDateShort(grave.death_date)}
                 </td>
-                <td className="px-4 py-4 text-right">
-                  <Link href={editHref(grave.id)} className={buttonClass("secondary", "md", "whitespace-nowrap")}>
-                    <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
-                    {grave.verification_status === "NEEDS_VERIFICATION" ? "Edit & Verifikasi" : "Edit"}
-                    <span className="sr-only"> {grave.deceased_name}</span>
-                  </Link>
+                <td>{blockOf(grave)}</td>
+                <td className="tabular-nums">{padGraveNumber(grave.grave_number)}</td>
+                <td>
+                  <StatusBadge status={grave.verification_status} compact />
+                  <FlagSummary record={grave} className="mt-1" />
+                </td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <Link href={editHref(grave.id)} className={buttonClass("secondary", "sm", "px-2.5")}>
+                      <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
+                      Edit
+                      <span className="sr-only"> {grave.deceased_name}</span>
+                    </Link>
+                    <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} className="px-2.5" />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -56,26 +97,49 @@ export function GraveList({ items, from }: { items: GraveListItem[]; from?: "ver
         </table>
       </div>
 
-      <ul className="space-y-3 md:hidden">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:hidden">
         {items.map((grave) => (
-          <li key={grave.id} className="rounded-2xl border border-line bg-white p-4">
+          <li key={grave.id} className="flex flex-col rounded-2xl border border-line bg-white p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-muted">{grave.grave_code}</p>
-                <p className={cn("text-lg font-semibold", grave.verify_deceased_name && "text-danger")}>{grave.deceased_name}</p>
-                <p className={cn("text-[0.95rem] text-muted", grave.verify_death_date && "font-medium text-danger")}>
-                  Wafat: {formatDate(grave.death_date, "—")}
-                </p>
+              <p className="pt-0.5 font-semibold text-muted">{grave.grave_code}</p>
+              <StatusBadge status={grave.verification_status} compact />
+            </div>
+            <p className={cn("mt-0.5 break-words text-lg font-semibold leading-snug", grave.verify_deceased_name && "text-danger")}>
+              {grave.deceased_name}
+            </p>
+            <p className={cn("text-[0.95rem] text-muted", grave.verify_death_date && "font-medium text-danger")}>
+              Wafat: {formatDate(grave.death_date, "—")}
+            </p>
+            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="inline-flex items-center gap-1.5">
+                <Layers className="size-4 text-primary" aria-hidden="true" />
+                Blok {blockOf(grave)}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Hash className="size-4 text-primary" aria-hidden="true" />
+                No. {padGraveNumber(grave.grave_number)}
+              </span>
+            </p>
+            <p className={cn("mt-1 flex items-start gap-1.5 text-sm", grave.verify_heir_name && "font-medium text-danger")}>
+              <SquareUser className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                Ahli Waris: {grave.heir_name?.trim() ? grave.heir_name : <span className="text-muted">{HEIR_EMPTY}</span>}
+              </span>
+            </p>
+            {(!grave.is_public || grave.verification_status === "NEEDS_VERIFICATION") && (
+              <div className="mt-1 space-y-0.5">
+                <FlagSummary record={grave} />
+                {!grave.is_public && <p className="text-xs font-medium text-gold">Tidak tampil di publik</p>}
               </div>
-              <StatusBadge status={grave.verification_status} />
+            )}
+            <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+              <Link href={editHref(grave.id)} className={buttonClass("secondary", "md", "w-full")}>
+                <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
+                Edit
+                <span className="sr-only"> {grave.deceased_name}</span>
+              </Link>
+              <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} size="md" className="w-full" />
             </div>
-            <div className="mt-3">
-              <FlaggedChips record={grave} />
-            </div>
-            <Link href={editHref(grave.id)} className={buttonClass("secondary", "lg", "mt-3 w-full")}>
-              <LinkPendingIcon className="size-4" icon={<Pencil className="size-4" aria-hidden="true" />} />
-              {grave.verification_status === "NEEDS_VERIFICATION" ? "Edit & Verifikasi" : "Edit"}
-            </Link>
           </li>
         ))}
       </ul>
@@ -83,6 +147,7 @@ export function GraveList({ items, from }: { items: GraveListItem[]; from?: "ver
   );
 }
 
+/** Paginasi bernomor (HP: sebelumnya/berikutnya + "x dari y"). */
 export function Pagination({
   page,
   total,
@@ -98,35 +163,64 @@ export function Pagination({
   if (pages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
+  const square = "inline-flex size-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors";
   return (
-    <nav aria-label="Halaman" className="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row">
-      <p className="text-muted">
+    <nav aria-label="Halaman" className="mt-5 flex flex-col items-center justify-between gap-3 sm:flex-row">
+      <p className="text-sm text-muted">
         Menampilkan {from}–{to} dari {total} data
       </p>
-      <div className="flex items-center gap-2">
-        {page > 1 ? (
-          <Link href={buildHref(page - 1)} className={buttonClass("secondary", "lg", "max-sm:px-4")}>
-            <LinkPendingIcon icon={<ChevronLeft className="size-5" aria-hidden="true" />} /> Sebelumnya
-          </Link>
-        ) : (
-          <span className={buttonClass("secondary", "lg", "pointer-events-none opacity-50 max-sm:px-4")} aria-disabled="true">
-            <ChevronLeft className="size-5" aria-hidden="true" /> Sebelumnya
-          </span>
-        )}
-        <span className="px-2 font-semibold">
-          {page} / {pages}
+      <div className="flex items-center gap-1.5">
+        <PageArrow href={page > 1 ? buildHref(page - 1) : null} label="Halaman sebelumnya">
+          <ChevronLeft className="size-5" aria-hidden="true" />
+        </PageArrow>
+        <span className="px-2 text-sm font-semibold sm:hidden">
+          {page} dari {pages}
         </span>
-        {page < pages ? (
-          <Link href={buildHref(page + 1)} className={buttonClass("secondary", "lg", "max-sm:px-4")}>
-            Berikutnya <LinkPendingIcon icon={<ChevronRight className="size-5" aria-hidden="true" />} />
-          </Link>
-        ) : (
-          <span className={buttonClass("secondary", "lg", "pointer-events-none opacity-50 max-sm:px-4")} aria-disabled="true">
-            Berikutnya <ChevronRight className="size-5" aria-hidden="true" />
-          </span>
-        )}
+        <ul className="hidden items-center gap-1.5 sm:flex">
+          {pageList(page, pages).map((p, i) =>
+            p === null ? (
+              <li key={`gap${i}`} className="w-6 text-center text-muted" aria-hidden="true">
+                …
+              </li>
+            ) : (
+              <li key={p}>
+                {p === page ? (
+                  <span aria-current="page" className={cn(square, "border-primary bg-primary text-white")}>
+                    {p}
+                  </span>
+                ) : (
+                  <Link href={buildHref(p)} className={cn(square, "border-line bg-white text-ink hover:border-primary/40 hover:bg-primary-soft")}>
+                    <span className="sr-only">Halaman </span>
+                    {p}
+                  </Link>
+                )}
+              </li>
+            ),
+          )}
+        </ul>
+        <PageArrow href={page < pages ? buildHref(page + 1) : null} label="Halaman berikutnya">
+          <ChevronRight className="size-5" aria-hidden="true" />
+        </PageArrow>
       </div>
     </nav>
+  );
+}
+
+function PageArrow({ href, label, children }: { href: string | null; label: string; children: ReactNode }) {
+  const cls = "inline-flex size-10 items-center justify-center rounded-lg border border-line bg-white text-ink";
+  if (!href) {
+    return (
+      <span className={cn(cls, "opacity-40")} aria-disabled="true">
+        {children}
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
+  return (
+    <Link href={href} className={cn(cls, "hover:border-primary/40 hover:bg-primary-soft")}>
+      <LinkPendingIcon icon={children} />
+      <span className="sr-only">{label}</span>
+    </Link>
   );
 }
 

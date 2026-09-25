@@ -317,5 +317,13 @@ createServer(async (req, res) => {
     return reply(req, res, 200, targets);
   }
 
+  // DELETE meniru RLS graves_admin_delete: tanpa token Admin => 0 baris terhapus (bukan error).
+  if (path === "/rest/v1/graves" && method === "DELETE") {
+    if (!admin) return reply(req, res, 200, []);
+    const { rows: targets } = applyFilters(url, graves);
+    for (const target of targets) graves.splice(graves.indexOf(target), 1);
+    return reply(req, res, 200, targets);
+  }
+
   reply(req, res, 404, { message: `fake-supabase: ${method} ${path} tidak didukung` });
 }).listen(PORT, "127.0.0.1", () => console.log(`fake-supabase listening on ${PORT}`));

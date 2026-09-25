@@ -54,3 +54,16 @@ export async function runSaveFlow({ save, uploadPhoto, removePhoto }: Deps): Pro
 
   return { result, photo: "none" };
 }
+
+const LIST_PATH = "/admin/makam";
+
+/**
+ * URL kembali ke daftar Data Makam setelah Simpan/Verifikasi, mempertahankan filter & halaman.
+ * Hanya menerima path internal `/admin/makam` (+ query) agar tidak bisa dipakai untuk open redirect.
+ */
+export function resolveBackHref(back: unknown, from?: unknown): string {
+  if (typeof back === "string" && back.length <= 500 && /^\/admin\/makam(\?[^\s#\\]*)?$/.test(back) && !back.includes("//")) {
+    return back;
+  }
+  return from === "verifikasi" ? `${LIST_PATH}?status=needs_verification` : LIST_PATH;
+}

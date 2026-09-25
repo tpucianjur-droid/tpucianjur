@@ -2,7 +2,7 @@ import "server-only";
 import { ADMIN } from "@/lib/config";
 import { buildMonthlySeries, classifyActivity, rangeStartIso, type ActivityKind, type ActivitySource } from "@/lib/dashboard/stats";
 import { logError } from "@/lib/log";
-import { isVerifyFieldKey, type VerifyFieldKey } from "@/lib/graves/verification";
+import { isVerifyFieldKey, VERIFY_FIELDS, type VerifyFieldKey } from "@/lib/graves/verification";
 import { sanitizeForPostgrestFilter } from "@/lib/search/normalize";
 import { getServerSupabase } from "@/lib/supabase/server";
 import type { AuditLogRow, BlockRow, CemeteryRow, GraveRow } from "@/lib/supabase/database.types";
@@ -38,6 +38,23 @@ export type GraveListFilters = {
   page: number;
 };
 
+export const LIST_STATUS_OPTIONS: { value: GraveListFilters["status"]; label: string }[] = [
+  { value: "all", label: "Semua Status" },
+  { value: "needs_verification", label: "Perlu Verifikasi" },
+  { value: "verified", label: "Terverifikasi" },
+  { value: "archived", label: "Arsip" },
+];
+
+/** Ringkasan filter aktif untuk kop export, mis. ["Blok: Blok A", "Status: Terverifikasi"]. Kosong = tanpa filter. */
+export function describeListFilters(filters: GraveListFilters, blocks: Pick<BlockRow, "id" | "name">[]): string[] {
+  const parts: string[] = [];
+  if (filters.block) parts.push(`Blok: ${blocks.find((b) => b.id === filters.block)?.name ?? "-"}`);
+  if (filters.status !== "all") parts.push(`Status: ${LIST_STATUS_OPTIONS.find((o) => o.value === filters.status)?.label}`);
+  if (filters.field) parts.push(`Field perlu dicek: ${VERIFY_FIELDS.find((f) => f.key === filters.field)?.label}`);
+  if (filters.q) parts.push(`Kata kunci: "${filters.q}"`);
+  return parts;
+}
+
 export function parseListFilters(params: Record<string, string | string[] | undefined>): GraveListFilters {
   const get = (key: string) => {
     const value = params[key];
@@ -46,44 +63,82 @@ export function parseListFilters(params: Record<string, string | string[] | unde
   const status = get("status");
   const field = get("field");
   const page = Number.parseInt(get("page"), 10);
+  const needs = status === "needs_verification" || status === "needs";
   return {
     q: get("q").trim().slice(0, 100),
     block: /^[0-9a-f-]{36}$/i.test(get("blok")) ? get("blok") : null,
     // "needs" = nilai lama (sebelum menu Verifikasi Data digabung ke Data Makam); tetap diterima agar link lama jalan.
-    status:
-      status === "needs_verification" || status === "needs"
-        ? "needs_verification"
-        : status === "verified" || status === "archived"
-          ? status
-          : "all",
-    field: isVerifyFieldKey(field) ? field : null,
+    status: needs ? "needs_verification" : status === "verified" || status === "archived" ? status : "all",
+    // Filter "field yang perlu dicek" hanya berlaku di status Perlu Verifikasi.
+    field: needs && isVerifyFieldKey(field) ? field : null,
     page: Number.isFinite(page) && page > 0 ? page : 1,
   };
+}
+
+/** Metode filter PostgREST yang dipakai applyListFilters (builder Supabase memenuhi bentuk ini). */
+type FilterChain = {
+  not(column: string, operator: string, value: unknown): FilterChain;
+  is(column: string, value: null): FilterChain;
+  eq(column: string, value: unknown): FilterChain;
+  or(filters: string): FilterChain;
+};
+
+/** Filter daftar Data Makam — dipakai daftar (per halaman) dan export PDF (semua halaman) agar hasilnya sama. */
+function applyListFilters<Q>(query: Q, filters: GraveListFilters): Q {
+  let q = query as unknown as FilterChain;
+  q = filters.status === "archived" ? q.not("archived_at", "is", null) : q.is("archived_at", null);
+  if (filters.status === "needs_verification") q = q.eq("verification_status", "NEEDS_VERIFICATION");
+  if (filters.status === "verified") q = q.eq("verification_status", "VERIFIED");
+  if (filters.field) q = q.eq(filters.field, true);
+  if (filters.block) q = q.eq("block_id", filters.block);
+
+  const term = sanitizeForPostgrestFilter(filters.q);
+  if (term.length > 0) {
+    q = q.or(`deceased_name.ilike.*${term}*,grave_code.ilike.*${term}*,heir_name.ilike.*${term}*`);
+  }
+  return q as unknown as Q;
 }
 
 export async function listGraves(filters: GraveListFilters) {
   const supabase = await getServerSupabase();
   const from = (filters.page - 1) * ADMIN.pageSize;
-  let query = supabase
-    .from("graves")
-    .select(GRAVE_LIST_COLUMNS, { count: "exact" })
+  const query = applyListFilters(
+    supabase.from("graves").select(GRAVE_LIST_COLUMNS, { count: "exact" }),
+    filters,
+  )
     .order("grave_code", { ascending: true })
     .range(from, from + ADMIN.pageSize - 1);
-
-  query = filters.status === "archived" ? query.not("archived_at", "is", null) : query.is("archived_at", null);
-  if (filters.status === "needs_verification") query = query.eq("verification_status", "NEEDS_VERIFICATION");
-  if (filters.status === "verified") query = query.eq("verification_status", "VERIFIED");
-  if (filters.field) query = query.eq(filters.field, true);
-  if (filters.block) query = query.eq("block_id", filters.block);
-
-  const term = sanitizeForPostgrestFilter(filters.q);
-  if (term.length > 0) {
-    query = query.or(`deceased_name.ilike.*${term}*,grave_code.ilike.*${term}*,heir_name.ilike.*${term}*`);
-  }
 
   const { data, error, count } = await query;
   if (error) throw new DataUnavailableError("listGraves", error);
   return { items: (data ?? []) as GraveListItem[], total: count ?? 0 };
+}
+
+/** Kolom export PDF: TANPA telepon & alamat ahli waris. */
+export type GraveExportRow = Pick<
+  GraveRow,
+  "grave_code" | "deceased_name" | "heir_name" | "death_date" | "grave_number" | "verification_status" | "archived_at"
+> & { blocks: { code: string } | null };
+
+/** Semua baris sesuai filter aktif (tanpa paginasi), diambil bertahap 1000 baris agar aman untuk ribuan data. */
+export async function listGravesForExport(filters: GraveListFilters): Promise<GraveExportRow[]> {
+  const supabase = await getServerSupabase();
+  const rows: GraveExportRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await applyListFilters(
+      supabase
+        .from("graves")
+        .select("grave_code, deceased_name, heir_name, death_date, grave_number, verification_status, archived_at, blocks(code)"),
+      filters,
+    )
+      .order("grave_code", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw new DataUnavailableError("listGravesForExport", error);
+    rows.push(...((data ?? []) as unknown as GraveExportRow[]));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
 }
 
 export async function getGraveForEdit(id: string): Promise<AdminGrave | null> {
@@ -280,19 +335,4 @@ export async function getGraveAudit(graveId: string, limit = 8): Promise<AuditEn
       changedFields,
     };
   });
-}
-
-/** Record berikutnya yang masih perlu verifikasi (alur kerja verifikasi berurutan). */
-export async function getNextNeedsVerification(afterCode: string): Promise<{ id: string; grave_code: string } | null> {
-  const supabase = await getServerSupabase();
-  const { data } = await supabase
-    .from("graves")
-    .select("id, grave_code")
-    .is("archived_at", null)
-    .eq("verification_status", "NEEDS_VERIFICATION")
-    .gt("grave_code", afterCode)
-    .order("grave_code", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return data;
 }

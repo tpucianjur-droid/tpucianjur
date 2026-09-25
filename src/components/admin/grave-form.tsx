@@ -54,8 +54,8 @@ type Props = {
   blocks: AdminBlock[];
   blockGraves: MapGrave[];
   photoUrl: string | null;
+  /** Daftar Data Makam (dengan filter sebelumnya). Setelah Simpan/Verifikasi berhasil, pengguna kembali ke sini. */
   backHref: string;
-  nextHref?: string | null;
   initialNotices?: Notice[];
   suggestedNumber?: number | null;
 };
@@ -66,7 +66,6 @@ export function GraveForm({
   blockGraves,
   photoUrl,
   backHref,
-  nextHref,
   initialNotices = [],
   suggestedNumber = null,
 }: Props) {
@@ -79,7 +78,6 @@ export function GraveForm({
   const [notices, setNotices] = useState<Notice[]>(initialNotices);
   const [flags, setFlags] = useState<VerificationFlags>(() => pickFlags(grave ?? {}));
   const [photo, setPhoto] = useState<PhotoChange>({ kind: "keep" });
-  const [saved, setSaved] = useState(false);
 
   const defaultBlock = grave?.block_id ?? blocks.find((b) => b.is_active)?.id ?? "";
   const [blockId, setBlockId] = useState(defaultBlock);
@@ -167,29 +165,18 @@ export function GraveForm({
       }
       if (flow.result.status !== "success" || !flow.result.data) return;
 
-      announceSaved(intent, flow.photo);
-      if (intent === "save-verify") setFlags(pickFlags({}));
-      setPhoto({ kind: "keep" });
-
-      if (!grave) {
-        router.replace(`/admin/makam/${flow.result.data.id}/edit?status=created&photo=${flow.photo}`);
-        return;
-      }
-      setSaved(true);
-      setNotices(flow.photoMessage ? [{ tone: "warning", message: flow.photoMessage }] : []);
-      router.refresh();
-      // Tampilkan peringatan foto / tautan "lanjut ke data berikutnya" di atas formulir.
-      if (flow.photoMessage || nextHref) window.scrollTo({ top: 0, behavior: "smooth" });
+      // Berhasil: toast lalu kembali ke Data Makam (filter sebelumnya dipertahankan). Daftar dimuat ulang dari server
+      // karena action sudah me-revalidate /admin. Tombol tetap nonaktif sampai halaman daftar tampil.
+      announceSaved(intent, flow.photo, flow.photoMessage);
+      router.push(backHref);
     });
   };
 
   /** Toast hasil simpan: data utama + status foto (foto gagal tidak membatalkan data). */
-  function announceSaved(intent: "save" | "save-verify", photoOutcome: string) {
-    if (photoOutcome === "failed") {
-      toast("Data makam berhasil disimpan. Foto gagal diunggah.", "warning");
-      return;
-    }
-    toast(intent === "save-verify" ? "Data berhasil diverifikasi." : "Data berhasil disimpan.");
+  function announceSaved(intent: "save" | "save-verify", photoOutcome: string, photoMessage?: string) {
+    const main = intent === "save-verify" ? "Data makam berhasil diverifikasi." : "Data makam berhasil disimpan.";
+    toast(main);
+    if (photoOutcome === "failed") toast(photoMessage ?? "Foto gagal diunggah.", "warning");
     if (photoOutcome === "uploaded") toast("Foto berhasil diunggah.");
     if (photoOutcome === "removed") toast("Foto berhasil dihapus.");
   }
@@ -217,11 +204,6 @@ export function GraveForm({
             {notice.message}
           </Alert>
         ))}
-        {saved && nextHref && (
-          <Link href={nextHref} className={buttonClass("primary", "lg")}>
-            Lanjut ke data berikutnya yang perlu diverifikasi
-          </Link>
-        )}
       </div>
 
       {flagged.length > 0 && (

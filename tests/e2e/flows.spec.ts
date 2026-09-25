@@ -43,17 +43,20 @@ test.describe("Alur publik: cari → detail → posisi", () => {
     await expect(page.getByText("27-06-1967")).toHaveCount(0);
   });
 
-  test("denah: makam tujuan di-highlight, lainnya abu-abu, legenda & petunjuk baris/kolom", async ({ page }) => {
+  test("denah: makam tujuan di-highlight (Dipilih), lainnya Terisi/Kosong, legenda & petunjuk baris/kolom", async ({ page }) => {
     await page.goto("/makam/A-032/lokasi");
     const map = page.getByRole("img", { name: /Rita Mangsari, kode A-032, ditandai hijau/ });
     await expect(map).toBeVisible();
-    // Target berwarna hijau tua, makam lain abu-abu.
-    await expect(map.locator('path[fill="#174a3a"]')).toHaveCount(1);
-    await expect(map.locator('path[fill="#c9cfcc"]')).toHaveCount(148);
-    await expect(page.getByLabel("Legenda denah")).toContainText("Makam yang dicari");
-    // A-032 pada grid simulasi 10 kolom => baris 4, kolom 2.
-    await expect(page.getByText(/baris 4/)).toBeVisible();
-    await expect(page.getByText(/kolom 2/)).toBeVisible();
+    // Target = Dipilih (hijau tua penuh); 148 makam lain ber-data = Terisi.
+    await expect(map.locator('rect[fill="#174a3a"]')).toHaveCount(1);
+    await expect(map.locator('rect[fill="#c3d8ca"]')).toHaveCount(148);
+    // 150–163 terisi (belum ada data sistem) & petak kosong sampai 1000 digambar sebagai path ringan.
+    await expect(map.locator('path[fill="#c3d8ca"]')).toHaveCount(1);
+    await expect(map.locator('path[fill="#fbfdfc"]')).toHaveCount(1);
+    for (const label of ["Terisi", "Kosong", "Dipilih"]) await expect(page.getByLabel("Legenda denah")).toContainText(label);
+    // A-032 pada layout Blok A => baris 2 (022–054), kolom 11.
+    await expect(page.getByText(/baris 2/)).toBeVisible();
+    await expect(page.getByText(/kolom 11/)).toBeVisible();
 
     // Zoom/pan tidak error dan fokus kembali ke makam.
     const before = await map.getAttribute("viewBox");
@@ -63,19 +66,23 @@ test.describe("Alur publik: cari → detail → posisi", () => {
     await page.getByRole("button", { name: "Fokus ke makam" }).click();
   });
 
-  test("denah: ketuk makam lain menampilkan nama & tautan detail", async ({ page }) => {
+  test("denah: ketuk makam lain => highlight & info pindah, bisa kembali ke makam tujuan", async ({ page }) => {
     await page.goto("/makam/A-032/lokasi");
     await page.getByRole("button", { name: "Tampilkan seluruh blok" }).click();
     const other = page.locator('[data-grave-id="00000000-0000-4000-8000-000000000001"]');
     await other.click();
-    await expect(page.getByRole("link", { name: /Lihat detail/ })).toHaveAttribute("href", "/makam/A-001");
+    await expect(page.getByText("Makam dipilih")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Detail makam/ })).toHaveAttribute("href", "/makam/A-001");
+    await expect(other.locator("rect")).toHaveAttribute("fill", "#174a3a");
+    await page.getByRole("button", { name: /Makam tujuan/ }).click();
+    await expect(page.getByText("Makam dipilih")).toHaveCount(0);
   });
 
   test("halaman Denah: tandai kode makam, blok tanpa data menampilkan empty state", async ({ page }) => {
     await page.goto("/denah?kode=A-032");
     await expect(page.getByRole("img", { name: /A-032, ditandai hijau/ })).toBeVisible();
     await page.getByRole("link", { name: "Blok D" }).click();
-    await expect(page.getByText("Denah Blok D belum tersedia")).toBeVisible();
+    await expect(page.getByText("Blok D belum dipetakan")).toBeVisible();
   });
 
   test("kode tidak terdaftar => 'Makam tidak ditemukan.'", async ({ page }) => {

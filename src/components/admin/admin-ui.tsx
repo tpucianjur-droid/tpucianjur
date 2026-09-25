@@ -33,32 +33,31 @@ export function AdminPageHeader({
 }
 
 /** Status record: merah + ikon + teks untuk "Perlu Verifikasi" (tidak hanya warna). */
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, compact = false }: { status: string; compact?: boolean }) {
   const needs = status === "NEEDS_VERIFICATION";
+  const icon = compact ? "size-3.5" : "size-4";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-semibold",
+        compact ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm",
         needs ? "bg-danger-soft text-danger" : "bg-primary-soft text-primary",
       )}
     >
-      {needs ? <AlertTriangle className="size-4" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
+      {needs ? <AlertTriangle className={icon} aria-hidden="true" /> : <CheckCircle2 className={icon} aria-hidden="true" />}
       {needs ? STATUS_LABEL.NEEDS_VERIFICATION : STATUS_LABEL.VERIFIED}
     </span>
   );
 }
 
-/** Daftar field yang masih perlu dicek (chip merah). */
-export function FlaggedChips({ record }: { record: Partial<Record<VerifyFieldKey, boolean | null>> }) {
+/** Ringkasan singkat field yang perlu dicek (untuk tabel/kartu yang padat). */
+export function FlagSummary({ record, className }: { record: Partial<Record<VerifyFieldKey, boolean | null>>; className?: string }) {
   const fields = flaggedFields(pickFlags(record));
   if (fields.length === 0) return null;
+  const labels = fields.map((f) => f.label).join(", ");
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Field yang perlu dicek">
-      {fields.map((field) => (
-        <li key={field.key} className="rounded-full border border-danger/30 bg-danger-soft px-2.5 py-0.5 text-sm font-medium text-danger">
-          {field.label}
-        </li>
-      ))}
-    </ul>
+    <p className={cn("text-xs font-medium leading-snug text-danger", className)} title={labels}>
+      {fields.length} field perlu dicek<span className="sr-only">: {labels}</span>
+    </p>
   );
 }
