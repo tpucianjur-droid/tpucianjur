@@ -27,6 +27,8 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/cn";
 import { FieldMessage, inputClass, Label } from "@/components/ui/field";
 import type { AdminBlock, AdminGrave } from "@/lib/data/admin";
+import { getBlockLayout } from "@/lib/denah/block-layouts";
+import { cellKey, resolvePosition, type ResolvedPosition } from "@/lib/denah/layout";
 import { formatGraveCode } from "@/lib/graves/code";
 import {
   computeVerificationStatus,
@@ -53,6 +55,8 @@ type Props = {
   grave: AdminGrave | null;
   blocks: AdminBlock[];
   blockGraves: MapGrave[];
+  /** Data tiap blok tersedia pada form tambah agar perubahan Blok langsung memperbarui picker. */
+  blockGravesByBlock?: Record<string, MapGrave[]>;
   photoUrl: string | null;
   /** Daftar Data Makam (dengan filter sebelumnya). Setelah Simpan/Verifikasi berhasil, pengguna kembali ke sini. */
   backHref: string;
@@ -64,6 +68,7 @@ export function GraveForm({
   grave,
   blocks,
   blockGraves,
+  blockGravesByBlock,
   photoUrl,
   backHref,
   initialNotices = [],
@@ -80,25 +85,35 @@ export function GraveForm({
   const [photo, setPhoto] = useState<PhotoChange>({ kind: "keep" });
 
   const defaultBlock = grave?.block_id ?? blocks.find((b) => b.is_active)?.id ?? "";
+  const initialNumber = grave?.grave_number != null ? String(grave.grave_number) : suggestedNumber ? String(suggestedNumber) : "";
+  const initialBlock = blocks.find((b) => b.id === defaultBlock) ?? null;
+  const initialMapping = grave ? null : numberMapping(initialBlock, Number.parseInt(initialNumber, 10));
   const [blockId, setBlockId] = useState(defaultBlock);
   const [name, setName] = useState(grave?.deceased_name ?? "");
-  const [number, setNumber] = useState(
-    grave?.grave_number != null ? String(grave.grave_number) : suggestedNumber ? String(suggestedNumber) : "",
+  const [number, setNumber] = useState(initialNumber);
+  const [row, setRow] = useState(grave?.visual_row != null ? String(grave.visual_row) : initialMapping ? String(initialMapping.y) : "");
+  const [column, setColumn] = useState(
+    grave?.visual_column != null ? String(grave.visual_column) : initialMapping ? String(initialMapping.x) : "",
   );
-  const [row, setRow] = useState(grave?.visual_row != null ? String(grave.visual_row) : "");
-  const [column, setColumn] = useState(grave?.visual_column != null ? String(grave.visual_column) : "");
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(Boolean(initialMapping));
 
   const block = blocks.find((b) => b.id === blockId) ?? null;
+  const activeBlockGraves = useMemo(
+    () => (blockGravesByBlock ? (blockGravesByBlock[blockId] ?? []) : blockId === defaultBlock ? blockGraves : []),
+    [blockGravesByBlock, blockId, defaultBlock, blockGraves],
+  );
   const numberValue = Number.parseInt(number, 10);
   const codePreview = block && Number.isInteger(numberValue) && numberValue > 0 ? formatGraveCode(block.code, numberValue) : "—";
+  const mappedPosition = grave ? null : numberMapping(block, numberValue);
+  const numberConflict = grave ? null : findNumberConflict(block, activeBlockGraves, numberValue, mappedPosition);
+  const pickerId = grave?.id ?? `__baru__:${blockId}:${Number.isInteger(numberValue) ? numberValue : "kosong"}`;
   const status = computeVerificationStatus(flags);
   const flagged = flaggedFields(flags);
   const setFlag = (key: VerifyFieldKey, value: boolean) => setFlags((current) => ({ ...current, [key]: value }));
 
   const pickerGraves = useMemo<MapGrave[]>(() => {
     const self: MapGrave = {
-      id: grave?.id ?? "__baru__",
+      id: pickerId,
       grave_code: codePreview,
       deceased_name: name || "Makam ini",
       grave_number: Number.isInteger(numberValue) ? numberValue : null,
@@ -107,10 +122,42 @@ export function GraveForm({
       visual_x: grave?.visual_x ?? null,
       visual_y: grave?.visual_y ?? null,
     };
-    return [...blockGraves.filter((g) => g.id !== self.id), self];
-  }, [blockGraves, grave, codePreview, name, numberValue, row, column]);
+    const otherGraves = activeBlockGraves.filter((g) => g.id !== grave?.id);
+    return numberConflict ? otherGraves : [...otherGraves, self];
+  }, [activeBlockGraves, grave, pickerId, codePreview, name, numberValue, row, column, numberConflict]);
 
-  const pickerAvailable = grave ? blockId === grave.block_id : blockGraves.length === 0 || blockId === defaultBlock;
+  const pickerAvailable = grave ? blockId === grave.block_id : Boolean(blockGravesByBlock) || blockGraves.length === 0 || blockId === defaultBlock;
+
+  function clearNumberError() {
+    setErrors((current) => {
+      if (!current.grave_number) return current;
+      const next = { ...current };
+      delete next.grave_number;
+      return next;
+    });
+  }
+
+  function updateNumber(nextNumber: string, nextBlock = block) {
+    setNumber(nextNumber);
+    clearNumberError();
+    if (grave) return;
+
+    const mapping = numberMapping(nextBlock, Number.parseInt(nextNumber, 10));
+    if (mapping) {
+      setRow(String(mapping.y));
+      setColumn(String(mapping.x));
+      setShowPicker(true);
+    } else {
+      // Nomor baru tidak boleh mewarisi koordinat nomor sebelumnya. Input manual tetap tersedia.
+      setRow("");
+      setColumn("");
+    }
+  }
+
+  function updateBlock(nextBlockId: string) {
+    setBlockId(nextBlockId);
+    updateNumber(number, blocks.find((item) => item.id === nextBlockId) ?? null);
+  }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -121,6 +168,11 @@ export function GraveForm({
       flagged.length > 0 &&
       !window.confirm(`Tandai ${flagged.length} field yang masih merah sebagai SUDAH BENAR lalu simpan?`)
     ) {
+      return;
+    }
+
+    if (numberConflict) {
+      showErrors({ grave_number: numberConflict.field }, numberConflict.summary);
       return;
     }
 
@@ -366,7 +418,7 @@ export function GraveForm({
               id="f-block_id"
               name="block_id"
               value={blockId}
-              onChange={(e) => setBlockId(e.target.value)}
+              onChange={(e) => updateBlock(e.target.value)}
               required
               aria-invalid={errors.block_id ? true : undefined}
               aria-describedby="f-block_id-msg"
@@ -393,13 +445,13 @@ export function GraveForm({
               min={1}
               max={99999}
               value={number}
-              onChange={(e) => setNumber(e.target.value)}
+              onChange={(e) => updateNumber(e.target.value)}
               required
-              aria-invalid={errors.grave_number ? true : undefined}
+              aria-invalid={errors.grave_number || numberConflict ? true : undefined}
               aria-describedby="f-grave_number-msg"
-              className={inputClass(Boolean(errors.grave_number), flags.verify_location)}
+              className={inputClass(Boolean(errors.grave_number || numberConflict), flags.verify_location)}
             />
-            <FieldMessage id="f-grave_number-msg" error={errors.grave_number} hint="Boleh diubah bila perlu." />
+            <FieldMessage id="f-grave_number-msg" error={errors.grave_number ?? numberConflict?.field} hint="Boleh diubah bila perlu." />
           </div>
           <div>
             <p className="mb-2 block text-[0.95rem] font-semibold">Kode makam</p>
@@ -464,6 +516,9 @@ export function GraveForm({
           {!pickerAvailable && (
             <p className="mt-2 text-sm text-muted">Blok diubah: simpan dahulu, lalu pilih posisi di blok yang baru.</p>
           )}
+          {!grave && block && Number.isInteger(numberValue) && numberValue > 0 && !mappedPosition && !numberConflict && (
+            <p className="mt-2 text-sm text-muted">Posisi nomor ini belum tersedia di Denah. Baris dan kolom tetap dapat diisi manual.</p>
+          )}
 
           <details className="mt-3">
             <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-primary">
@@ -503,9 +558,18 @@ export function GraveForm({
               <GraveMap
                 block={block}
                 graves={pickerGraves}
-                targetId={grave?.id ?? "__baru__"}
+                targetId={numberConflict ? null : pickerId}
                 editable
-                onSelectCell={(x, y) => {
+                onSelectCell={(x, y, graveNumber) => {
+                  if (!grave && graveNumber !== null) {
+                    const conflict = findNumberConflict(block, activeBlockGraves, graveNumber, numberMapping(block, graveNumber));
+                    if (conflict) {
+                      showErrors({ grave_number: conflict.field }, conflict.summary);
+                      return;
+                    }
+                    setNumber(String(graveNumber));
+                    clearNumberError();
+                  }
                   setColumn(String(x));
                   setRow(String(y));
                 }}
@@ -631,6 +695,55 @@ export function GraveForm({
     </form>
   );
 }
+
+function numberMapping(block: AdminBlock | null, graveNumber: number): ResolvedPosition | null {
+  if (!block || !Number.isInteger(graveNumber) || graveNumber < 1) return null;
+  return resolvePosition(
+    {
+      grave_number: graveNumber,
+      visual_x: null,
+      visual_y: null,
+      visual_row: null,
+      visual_column: null,
+    },
+    block,
+  );
+}
+
+type NumberConflict = { field: string; summary: string };
+
+/** Cegah nomor ganda dan petak Denah yang sudah berstatus terisi, tanpa mengubah data yang ada. */
+function findNumberConflict(
+  block: AdminBlock | null,
+  graves: MapGrave[],
+  graveNumber: number,
+  mapping: ResolvedPosition | null,
+): NumberConflict | null {
+  if (!block || !Number.isInteger(graveNumber) || graveNumber < 1) return null;
+  if (graves.some((item) => item.grave_number === graveNumber)) {
+    return {
+      field: "Nomor ini sudah dipakai di blok yang sama. Gunakan nomor lain.",
+      summary: `Nomor makam ${graveNumber} sudah dipakai di Blok ${block.code}.`,
+    };
+  }
+
+  if (mapping) {
+    const mappedKey = cellKey(mapping);
+    const overlaps = graves.some((item) => {
+      const position = resolvePosition(item, block);
+      return position ? cellKey(position) === mappedKey : false;
+    });
+    const layout = getBlockLayout(block.code);
+    if (overlaps || (layout && graveNumber <= layout.filledThrough)) {
+      return {
+        field: "Posisi nomor ini sudah terisi di Denah. Gunakan nomor lain.",
+        summary: `Posisi makam ${graveNumber} sudah terisi di Denah Blok ${block.code}.`,
+      };
+    }
+  }
+  return null;
+}
+
 function Section({ icon, title, description, children }: { icon: ReactNode; title: string; description: string; children: ReactNode }) {
   return (
     <Card className="p-5 sm:p-6">

@@ -2,9 +2,10 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { LandPlot, LayoutDashboard, LogOut, Map as MapIcon, Settings, type LucideIcon } from "lucide-react";
+import { Home, LandPlot, LayoutDashboard, LogOut, Map as MapIcon, Settings, type LucideIcon } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { BottomNavLink } from "@/components/public/bottom-nav";
+import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { Spinner } from "@/components/ui/spinner";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -111,22 +112,28 @@ export function AdminMobileBar({ displayName }: { displayName: string }) {
         </Link>
         <span className="min-w-0 flex-1 truncate text-[1.0625rem] font-bold">{current?.label ?? "Admin"}</span>
         <span
-          className="flex size-9 items-center justify-center rounded-full bg-sage text-sm font-bold uppercase text-primary"
+          className="flex size-9 items-center justify-center rounded-full bg-sage text-sm font-bold uppercase text-primary max-[360px]:hidden"
           title={displayName}
           aria-hidden="true"
         >
           {displayName.slice(0, 1)}
         </span>
-        <form action={signOut}>
-          <SubmitButton
-            variant="secondary"
-            className="min-h-10 px-3 text-sm"
-            icon={<LogOut className="size-4" aria-hidden="true" />}
-            loadingText="Keluar…"
-          >
-            Keluar
-          </SubmitButton>
-        </form>
+        <div className="flex items-center gap-2">
+          <Link href="/" className={buttonClass("secondary", "md", "min-h-10 px-3 text-sm max-[360px]:gap-0 max-[360px]:px-2")}>
+            <Home className="size-4 max-[360px]:hidden" aria-hidden="true" />
+            Beranda
+          </Link>
+          <form action={signOut}>
+            <SubmitButton
+              variant="secondary"
+              className="min-h-10 px-3 text-sm max-[360px]:gap-0 max-[360px]:px-2"
+              icon={<LogOut className="size-4 max-[360px]:hidden" aria-hidden="true" />}
+              loadingText="Keluar…"
+            >
+              Keluar
+            </SubmitButton>
+          </form>
+        </div>
       </div>
     </header>
   );

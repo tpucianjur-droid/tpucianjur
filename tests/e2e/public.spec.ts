@@ -98,6 +98,13 @@ test.describe("Cari Makam (UI, API di-mock)", () => {
       await expect.poll(() => blocks.at(-1)).toBe("A");
     }
   });
+
+  test("teks bantuan nama lengkap sudah dihapus tanpa mengubah validasi minimum", async ({ page }) => {
+    await page.goto("/cari-makam");
+    await expect(page.getByText("Tidak perlu nama lengkap. Huruf besar/kecil tidak berpengaruh.")).toHaveCount(0);
+    await page.getByLabel("Nama yang dimakamkan atau kode makam").fill("a");
+    await expect(page.getByText("Ketik minimal 2 huruf.")).toBeVisible();
+  });
 });
 
 test.describe("Halaman informasi & responsif", () => {
@@ -119,6 +126,47 @@ test.describe("Halaman informasi & responsif", () => {
   test("Tentang: menjelaskan privasi data ahli waris", async ({ page }) => {
     await page.goto("/tentang");
     await expect(page.getByText(/data internal/)).toBeVisible();
+  });
+
+  test("lokasi TPU compact di tablet landscape dan tetap vertikal di portrait/mobile", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "Matriks viewport cukup dijalankan sekali.");
+
+    const landscape = [
+      { width: 1366, height: 768 },
+      { width: 1024, height: 768 },
+      { width: 987, height: 768 },
+      { width: 900, height: 700 },
+    ];
+    const portrait = [
+      { width: 768, height: 1024 },
+      { width: 412, height: 915 },
+    ];
+
+    for (const path of ["/", "/tentang"]) {
+      for (const viewport of landscape) {
+        await page.setViewportSize(viewport);
+        await page.goto(path);
+        const layout = page.locator("[data-location-layout]");
+        const heading = layout.getByRole("heading", { name: "Temukan Lokasi Kami", exact: true });
+        const map = layout.locator("[data-location-map]");
+        const [layoutBox, headingBox, mapBox] = await Promise.all([layout.boundingBox(), heading.boundingBox(), map.boundingBox()]);
+        expect(mapBox!.x).toBeGreaterThan(headingBox!.x + headingBox!.width);
+        expect(layoutBox!.height).toBeLessThan(450);
+        if (viewport.width <= 1024) expect(mapBox!.width / layoutBox!.width).toBeGreaterThan(0.5);
+        await expectNoHorizontalScroll(page);
+      }
+
+      for (const viewport of portrait) {
+        await page.setViewportSize(viewport);
+        await page.goto(path);
+        const layout = page.locator("[data-location-layout]");
+        const heading = layout.getByRole("heading", { name: "Temukan Lokasi Kami", exact: true });
+        const map = layout.locator("[data-location-map]");
+        const [headingBox, mapBox] = await Promise.all([heading.boundingBox(), map.boundingBox()]);
+        expect(mapBox!.y).toBeGreaterThan(headingBox!.y + headingBox!.height);
+        await expectNoHorizontalScroll(page);
+      }
+    }
   });
 
   test("navigasi mobile/desktop dapat dipakai dengan keyboard", async ({ page, isMobile }) => {

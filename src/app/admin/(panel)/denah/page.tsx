@@ -15,9 +15,11 @@ export default async function AdminDenahPage({ searchParams }: PageProps<"/admin
   const params = await searchParams;
   const blocks = await getAdminBlocks();
   const adding = params.tambah === "1";
-  const requested = typeof params.blok === "string" ? params.blok.toUpperCase() : null;
+  const requestedCode = typeof params.kode === "string" ? params.kode.trim().toUpperCase() : null;
+  const requested = typeof params.blok === "string" ? params.blok.toUpperCase() : (requestedCode?.split("-")[0] ?? null);
   const block = adding ? null : (blocks.find((b) => b.code === requested) ?? blocks[0] ?? null);
   const graves = block ? await getBlockGravesForEditor(block.id) : [];
+  const target = requestedCode ? (graves.find((grave) => grave.grave_code === requestedCode) ?? null) : null;
 
   return (
     <>
@@ -84,7 +86,7 @@ export default async function AdminDenahPage({ searchParams }: PageProps<"/admin
                 Tambahkan data makam dengan memilih {block.name} pada formulir Tambah Data Makam.
               </EmptyState>
             ) : (
-              <DenahEditor key={block.id} block={block} graves={graves} />
+              <DenahEditor key={block.id} block={block} graves={graves} initialSelectedId={target?.id ?? null} />
             )}
           </Card>
         </div>

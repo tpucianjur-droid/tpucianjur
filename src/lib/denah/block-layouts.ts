@@ -113,3 +113,12 @@ export function layoutSlot(layout: BlockLayout, graveNumber: number | null | und
   }
   return null;
 }
+
+/** Nomor makam untuk sebuah petak layout. Kebalikan dari `layoutSlot`; null untuk petak di luar bentuk blok. */
+export function layoutGraveNumber(layout: BlockLayout, x: number, y: number): number | null {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 1 || y < 1) return null;
+  const row = layout.rows.find((item) => item.row === y);
+  if (!row) return null;
+  const graveNumber = row.start + x - row.offset - 1;
+  return graveNumber >= row.start && graveNumber <= row.end ? graveNumber : null;
+}

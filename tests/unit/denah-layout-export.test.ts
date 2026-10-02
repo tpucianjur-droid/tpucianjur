@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { pageList } from "@/lib/admin/pagination";
 import { resolveBackHref } from "@/lib/admin/save-flow";
 import { describeListFilters, parseListFilters } from "@/lib/data/admin";
-import { BLOCK_LAYOUTS, buildBlockLayout, getBlockLayout, layoutSlot } from "@/lib/denah/block-layouts";
+import { BLOCK_LAYOUTS, buildBlockLayout, getBlockLayout, layoutGraveNumber, layoutSlot } from "@/lib/denah/block-layouts";
 import { blockExtent, resolvePosition } from "@/lib/denah/layout";
 import { buildGraveListPdf, shortDate, type GravePdfRow } from "@/lib/pdf/grave-list-pdf";
 import { FONT_WIDTHS, textWidth, wrapText } from "@/lib/pdf/writer";
@@ -47,6 +47,13 @@ describe("denah Blok A: layout baris data-driven", () => {
     expect(resolvePosition({ ...noPos, grave_number: 32 }, blockA)).toEqual({ x: 11, y: 2, source: "layout" });
     // Posisi manual Admin tetap menimpa layout.
     expect(resolvePosition({ ...noPos, grave_number: 32, visual_row: 3, visual_column: 4 }, blockA)).toEqual({ x: 4, y: 3, source: "grid" });
+  });
+
+  it("petak baris/kolom => nomor makam untuk sinkronisasi picker", () => {
+    expect(layoutGraveNumber(layout, 11, 2)).toBe(32);
+    expect(layoutGraveNumber(layout, 14, 6)).toBe(167);
+    expect(layoutGraveNumber(layout, 1, 7)).toBeNull(); // baris 7 memiliki offset 1
+    expect(layoutGraveNumber(layout, 2, 7)).toBe(187);
   });
 
   it("kanvas mengikuti layout (bukan grid 10 kolom lama)", () => {

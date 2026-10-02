@@ -57,6 +57,7 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
   // Baris / Posisi hanya bila tercatat di denah (tidak dikarang).
   const position = grave.visual_row !== null && grave.visual_column !== null ? `Baris ${grave.visual_row}, Kolom ${grave.visual_column}` : null;
   const back = `back=${encodeURIComponent(backHref)}`;
+  const denahHref = `/admin/denah?blok=${encodeURIComponent(grave.blocks?.code ?? "")}&kode=${encodeURIComponent(grave.grave_code)}`;
 
   return (
     <div className="w-full">
@@ -122,6 +123,9 @@ export default async function AdminGraveDetailPage({ params, searchParams }: Pag
               <InfoRow label="Lokasi TPU">{location}</InfoRow>
               {position && <InfoRow label="Baris / Posisi">{position}</InfoRow>}
             </InfoList>
+            <LinkButton href={denahHref} variant="secondary" className="mt-4 w-full sm:w-auto" icon={<MapIcon className="size-5" aria-hidden="true" />}>
+              Lihat Posisi Makam
+            </LinkButton>
           </Section>
 
           <Section icon={<ShieldCheck className="size-5" />} title="Status / Verifikasi">

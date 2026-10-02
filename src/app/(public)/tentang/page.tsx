@@ -119,8 +119,8 @@ export default async function TentangPage() {
         <section aria-label="Lokasi TPU">
           <LocationSection
             settings={settings}
-            eyebrow="Lokasi"
-            title="Lokasi TPU"
+            eyebrow="Lokasi TPU"
+            title="Temukan Lokasi Kami"
             description="Ketuk peta untuk membuka lokasi di Google Maps, atau gunakan petunjuk arah dari posisi Anda."
           />
         </section>

@@ -34,10 +34,22 @@ export function LocationSection({
   const address = location.address || TPU_ADDRESS;
 
   return (
-    <div className={cn("grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-x-14 lg:gap-y-6", className)}>
+    <div
+      data-location-layout
+      className={cn(
+        "grid items-center gap-6",
+        "[@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+        "[@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:gap-x-8 [@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:gap-y-4",
+        "min-[1100px]:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] min-[1100px]:gap-x-14 min-[1100px]:gap-y-6",
+        className,
+      )}
+    >
       <SectionHeading align="left" eyebrow={eyebrow} title={title} description={description} />
 
-      <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+      <div
+        data-location-map
+        className="[@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:col-start-2 [@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:row-span-2 [@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:row-start-1 min-[1100px]:col-start-2 min-[1100px]:row-span-2 min-[1100px]:row-start-1"
+      >
         <MapPreview href={mapsUrl} name={name} />
       </div>
 
@@ -97,7 +109,7 @@ function MapPreview({ href, name }: { href: string | null; name: string }) {
         {body}
         <span className="sr-only">Buka lokasi {name} di Google Maps (tab baru)</span>
       </a>
-      <figcaption className="flex items-center justify-center gap-1.5 text-xs text-muted lg:justify-start">
+      <figcaption className="flex items-center justify-center gap-1.5 text-xs text-muted [@media(min-width:900px)_and_(max-width:1099px)_and_(orientation:landscape)]:justify-start min-[1100px]:justify-start">
         <SquareArrowOutUpRight className="size-3.5" aria-hidden="true" />
         Ketuk peta untuk membuka Google Maps
       </figcaption>

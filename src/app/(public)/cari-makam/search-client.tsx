@@ -125,7 +125,7 @@ export function SearchClient({ blocks, initialQuery, initialBlock, initialResult
               autoComplete="off"
               enterKeyHint="search"
               placeholder="Contoh: Rita atau A-032"
-              aria-describedby="search-hint"
+              aria-describedby={tooShort ? "search-hint" : undefined}
               className="min-h-13 w-full rounded-xl border border-line bg-surface pl-12 pr-20 text-lg text-ink placeholder:text-muted/80 focus:border-primary focus:bg-white focus:outline-none focus:ring-3 focus:ring-primary/15 [&::-webkit-search-cancel-button]:hidden"
             />
             {status === "loading" && (
@@ -156,9 +156,11 @@ export function SearchClient({ blocks, initialQuery, initialBlock, initialResult
             Cari Makam
           </Button>
         </div>
-        <p id="search-hint" className={cn("mt-2 text-sm", tooShort ? "text-gold" : "text-muted")}>
-          {tooShort ? `Ketik minimal ${SEARCH.minChars} huruf.` : "Tidak perlu nama lengkap. Huruf besar/kecil tidak berpengaruh."}
-        </p>
+        {tooShort && (
+          <p id="search-hint" className="mt-2 text-sm text-gold">
+            Ketik minimal {SEARCH.minChars} huruf.
+          </p>
+        )}
 
         {blocks.length > 0 && (
           <fieldset className="mt-4">

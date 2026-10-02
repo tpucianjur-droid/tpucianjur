@@ -174,6 +174,25 @@ test.describe("Admin", () => {
     await expect(page.getByRole("combobox", { name: "Field yang perlu dicek" })).toBeVisible();
   });
 
+  test("header tablet: Beranda berada di kiri Keluar dan session Admin tetap aktif", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await login(page);
+
+    const header = page.getByRole("banner");
+    const home = header.getByRole("link", { name: "Beranda" });
+    const logout = header.getByRole("button", { name: "Keluar" });
+    await expect(home).toBeVisible();
+    await expect(logout).toBeVisible();
+    const [homeBox, logoutBox] = await Promise.all([home.boundingBox(), logout.boundingBox()]);
+    expect(homeBox!.x + homeBox!.width).toBeLessThanOrEqual(logoutBox!.x);
+
+    await home.click();
+    await expect(page).toHaveURL(/\/$/);
+    await page.getByRole("link", { name: "Admin" }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  });
+
   test("filter status: tombol langsung terlihat (bukan dropdown), bisa dipadukan dengan cari & blok", async ({ page }, info) => {
     // Data arsip milik test ini sendiri (Blok D) agar filter Arsip punya hasil pasti.
     const number = info.project.name === "desktop" ? "57" : "58";
@@ -294,6 +313,73 @@ test.describe("Admin", () => {
     await expect(page).toHaveURL(/\/admin\/makam\/tambah$/);
     await expect(page.getByLabel("Nama yang dimakamkan")).toHaveValue("Uji Duplikat");
     await expect(page.getByRole("button", { name: "Simpan", exact: true })).toBeEnabled();
+  });
+
+  test("tambah makam: Nomor dan Denah sinkron dua arah; occupied dan tanpa mapping ditangani", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/makam/tambah");
+
+    const number = page.getByLabel("Nomor makam");
+    const row = page.getByLabel("Baris", { exact: true });
+    const column = page.getByLabel("Kolom", { exact: true });
+    await number.fill("167");
+    await expect(page.getByText("A-167", { exact: true })).toBeVisible();
+    await expect(row).toHaveValue("6");
+    await expect(column).toHaveValue("14");
+
+    const map = page.getByRole("img", { name: "Denah Blok A untuk memilih posisi makam" });
+    await expect(map).toBeVisible();
+    await expect(map.locator('[data-grave-id="__baru__:00000000-0000-4000-8000-000000009100:167"] rect')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+
+    await map.locator('[data-cell="15:6"]').click();
+    await expect(number).toHaveValue("168");
+    await expect(page.getByText("A-168", { exact: true })).toBeVisible();
+    await expect(row).toHaveValue("6");
+    await expect(column).toHaveValue("15");
+
+    await number.fill("32");
+    await expect(page.getByText("Nomor ini sudah dipakai di blok yang sama. Gunakan nomor lain.")).toBeVisible();
+    const occupied = map.locator('[data-grave-id="00000000-0000-4000-8000-000000000032"] rect');
+    await expect(occupied).toHaveAttribute("fill", "#c3d8ca");
+    await expect(occupied).not.toHaveAttribute("data-active", "true");
+    await expect(map.locator('[data-cell="11:2"]')).toHaveCount(0);
+    await page.getByRole("button", { name: "Simpan", exact: true }).click();
+    await expect(page.getByRole("main").getByText("Nomor makam 32 sudah dipakai di Blok A.").first()).toBeVisible();
+    await expect(number).toBeFocused();
+
+    await number.fill("1001");
+    await expect(row).toHaveValue("");
+    await expect(column).toHaveValue("");
+    await expect(page.getByText("Posisi nomor ini belum tersedia di Denah. Baris dan kolom tetap dapat diisi manual.")).toBeVisible();
+
+    await page.locator("#f-block_id").selectOption({ label: "Blok B" });
+    await number.fill("167");
+    await expect(page.getByText("B-167", { exact: true })).toBeVisible();
+    await expect(row).toHaveValue("");
+    await expect(column).toHaveValue("");
+
+    await page.locator("#f-block_id").selectOption({ label: "Blok A" });
+    await expect(page.getByText("A-167", { exact: true })).toBeVisible();
+    await expect(row).toHaveValue("6");
+    await expect(column).toHaveValue("14");
+  });
+
+  test("detail admin: Lihat Posisi Makam membuka Denah dengan makam terpilih dan terfokus", async ({ page }) => {
+    const graveId = "00000000-0000-4000-8000-000000000001";
+    await login(page);
+    await page.goto(`/admin/makam/${graveId}`);
+    await page.getByRole("link", { name: "Lihat Posisi Makam" }).click();
+    await expect(page).toHaveURL(/\/admin\/denah\?blok=A&kode=A-001$/);
+
+    const map = page.getByRole("img", { name: "Editor denah Blok A" });
+    await expect(page.locator("#pick-grave")).toHaveValue(graveId);
+    await expect(map.locator(`[data-grave-id="${graveId}"] rect`)).toHaveAttribute("data-active", "true");
+    await expect
+      .poll(async () => Number((await map.getAttribute("viewBox"))?.split(" ")[2] ?? 0))
+      .toBeLessThan(1000);
   });
 
   test("hapus data: batal tidak menghapus, hapus hanya setelah konfirmasi", async ({ page }, info) => {

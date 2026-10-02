@@ -17,6 +17,7 @@ import { cellKey, resolvePosition, type BlockGridInput } from "@/lib/denah/layou
 type Props = {
   block: BlockGridInput & { code: string; name: string };
   graves: (MapGrave & { verify_location: boolean })[];
+  initialSelectedId?: string | null;
 };
 
 const SOURCE_LABEL = {
@@ -30,16 +31,18 @@ const SOURCE_LABEL = {
  * Editor posisi: pilih makam (klik di denah atau dari daftar) → klik petak kosong untuk memindahkan.
  * Setiap perubahan langsung disimpan dan tercermin di halaman publik.
  */
-export function DenahEditor({ block, graves: initialGraves }: Props) {
+export function DenahEditor({ block, graves: initialGraves, initialSelectedId = null }: Props) {
   const router = useRouter();
   const toast = useToast();
+  const initialSelected = initialGraves.find((grave) => grave.id === initialSelectedId) ?? null;
+  const initialPosition = initialSelected ? resolvePosition(initialSelected, block) : null;
   const [graves, setGraves] = useState(initialGraves);
   const [action, setAction] = useState<"move" | "manual" | "reset" | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelected?.id ?? null);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
-  const [rowInput, setRowInput] = useState("");
-  const [colInput, setColInput] = useState("");
+  const [rowInput, setRowInput] = useState(initialPosition ? String(Math.round(initialPosition.y)) : "");
+  const [colInput, setColInput] = useState(initialPosition ? String(Math.round(initialPosition.x)) : "");
 
   const selected = graves.find((g) => g.id === selectedId) ?? null;
   const selectedPos = selected ? resolvePosition(selected, block) : null;

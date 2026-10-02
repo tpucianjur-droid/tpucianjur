@@ -4,7 +4,7 @@ import { memo, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Crosshair, Maximize2, Minus, Plus } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 import { LoadingOverlay } from "@/components/ui/skeletons";
-import { getBlockLayout, type BlockLayout, type LayoutRow } from "@/lib/denah/block-layouts";
+import { getBlockLayout, layoutGraveNumber, type BlockLayout, type LayoutRow } from "@/lib/denah/block-layouts";
 import {
   blockExtent,
   canvasSize,
@@ -34,7 +34,7 @@ type Props = {
   onClearSelection?: () => void;
   /** Mode editor: tampilkan sel grid kosong yang dapat diklik. */
   editable?: boolean;
-  onSelectCell?: (x: number, y: number) => void;
+  onSelectCell?: (x: number, y: number, graveNumber: number | null) => void;
   className?: string;
   ariaLabel: string;
 };
@@ -119,7 +119,7 @@ export function GraveMap({
     const cell = element?.getAttribute("data-cell");
     if (cell && onSelectCell) {
       const [x, y] = cell.split(":").map(Number);
-      return onSelectCell(x, y);
+      return onSelectCell(x, y, graveNumberAtCell(block, layout, x, y));
     }
     onClearSelection?.();
   });
@@ -219,6 +219,15 @@ function filledRowCount(layout: BlockLayout, placed: Placed[]) {
   for (const row of layout.rows) if (row.start <= layout.filledThrough) last = row.row;
   for (const p of placed) if (p.pos.source === "layout") last = Math.max(last, Math.ceil(p.pos.y));
   return last;
+}
+
+/** Nomor petak untuk picker. Blok tanpa layout/grid tetap mendukung posisi baris/kolom manual. */
+function graveNumberAtCell(block: BlockGridInput, layout: BlockLayout | null, x: number, y: number) {
+  if (layout) return layoutGraveNumber(layout, x, y);
+  const columns = block.grid_columns;
+  const rows = block.grid_rows;
+  if (!columns || x > columns || (rows && y > rows)) return null;
+  return (y - 1) * columns + x;
 }
 
 function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
