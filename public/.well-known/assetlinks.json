@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "id.tpucianjur.app",
+      "sha256_cert_fingerprints": [
+        "02:37:29:2D:97:F1:13:04:F5:B1:F8:3A:1A:5C:F7:BD:FC:CF:D8:7D:8F:87:C9:76:A3:16:F5:59:65:17:A9:07"
+      ]
+    }
+  }
+]
