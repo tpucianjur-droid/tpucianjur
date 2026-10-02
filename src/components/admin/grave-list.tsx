@@ -1,10 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Eye, Pencil } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, Grid2X2, Pencil, TableProperties } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { LinkPendingIcon } from "@/components/ui/link-status";
 import { cn } from "@/components/ui/cn";
-import { pageList } from "@/lib/admin/pagination";
 import type { GraveListItem } from "@/lib/data/admin";
 import { formatDate, formatDateShort, padGraveNumber } from "@/lib/format";
 import { FlagSummary, StatusBadge } from "./admin-ui";
@@ -19,18 +20,80 @@ type Props = {
 };
 
 const HEIR_EMPTY = "Belum diisi";
+const VIEW_STORAGE_KEY = "admin-grave-list-view";
+const TABLE_VIEW_QUERY = "(min-width: 1280px), (min-width: 768px) and (orientation: landscape)";
+
+type ViewMode = "table" | "grid";
+
+function storedView(): ViewMode | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    return stored === "table" || stored === "grid" ? stored : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * Tabel di desktop lebar (xl), kartu ringkas di HP & tablet — tabel 8 kolom tidak dipaksa mengecil.
+ * Default tabel di desktop/tablet landscape, kartu ringkas di HP/tablet portrait.
+ * Preferensi tampilan hanya disimpan di browser dan tidak memengaruhi query/data.
  * Nama/tanggal/ahli waris berwarna merah bila field tersebut perlu dicek.
  */
 export function GraveList({ items, blockCodes, listHref }: Props) {
   const blockOf = (grave: GraveListItem) => (grave.block_id ? (blockCodes[grave.block_id] ?? "—") : "—");
+  const [preferredView, setPreferredView] = useState<ViewMode | null>(storedView);
+  const [tableAvailable, setTableAvailable] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(TABLE_VIEW_QUERY);
+    const updateAvailability = () => setTableAvailable(media.matches);
+
+    updateAvailability();
+    media.addEventListener("change", updateAvailability);
+    return () => media.removeEventListener("change", updateAvailability);
+  }, []);
+
+  const view: ViewMode = tableAvailable ? (preferredView ?? "table") : "grid";
+
+  const chooseView = (nextView: ViewMode) => {
+    setPreferredView(nextView);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, nextView);
+    } catch {
+      // Pilihan tetap berlaku selama halaman aktif meski storage diblokir.
+    }
+  };
 
   return (
     <>
-      <div className="hidden overflow-clip rounded-2xl border border-line bg-white xl:block">
-        <table className="w-full table-fixed text-left text-[0.925rem]">
+      {tableAvailable && (
+        <div className="mb-3 flex justify-end" role="group" aria-label="Tampilan daftar">
+          <button
+            type="button"
+            aria-pressed={view === "table"}
+            onClick={() => chooseView("table")}
+            className={buttonClass(view === "table" ? "primary" : "secondary", "xs")}
+          >
+            <TableProperties className="size-4" aria-hidden="true" />
+            Tabel
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === "grid"}
+            onClick={() => chooseView("grid")}
+            className={buttonClass(view === "grid" ? "primary" : "secondary", "xs", "ml-2")}
+          >
+            <Grid2X2 className="size-4" aria-hidden="true" />
+            Grid
+          </button>
+        </div>
+      )}
+
+      {view === "table" && (
+        <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-line bg-white [contain:paint]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[60rem] table-fixed text-left text-[0.925rem]">
           <colgroup>
             <col className="w-[4.75rem]" />
             <col />
@@ -81,12 +144,15 @@ export function GraveList({ items, blockCodes, listHref }: Props) {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+            </table>
+          </div>
+        </div>
+      )}
 
-      <ul className="grid gap-3 sm:grid-cols-2 xl:hidden">
-        {items.map((grave) => (
-          <li key={grave.id} className="flex flex-col rounded-2xl border border-line bg-white p-4">
+      {view === "grid" && (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((grave) => (
+            <li key={grave.id} className="flex flex-col rounded-2xl border border-line bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="pt-0.5 font-semibold text-muted">{grave.grave_code}</p>
               <StatusBadge status={grave.verification_status} compact />
@@ -112,9 +178,10 @@ export function GraveList({ items, blockCodes, listHref }: Props) {
               </div>
             )}
             <RowActions grave={grave} listHref={listHref} className="mt-auto grid grid-cols-3 gap-2 pt-3" />
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -136,82 +203,5 @@ function RowActions({ grave, listHref, className }: { grave: GraveListItem; list
       </Link>
       <DeleteGraveButton graveId={grave.id} code={grave.grave_code} name={grave.deceased_name} size="xs" />
     </div>
-  );
-}
-
-/** Paginasi bernomor (HP: sebelumnya/berikutnya + "x dari y"). */
-export function Pagination({
-  page,
-  total,
-  pageSize,
-  buildHref,
-}: {
-  page: number;
-  total: number;
-  pageSize: number;
-  buildHref: (page: number) => string;
-}) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return null;
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  const square = "inline-flex size-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors";
-  return (
-    <nav aria-label="Halaman" className="mt-5 flex flex-col items-center justify-between gap-3 sm:flex-row">
-      <p className="text-sm text-muted">
-        Menampilkan {from}–{to} dari {total} data
-      </p>
-      <div className="flex items-center gap-1.5">
-        <PageArrow href={page > 1 ? buildHref(page - 1) : null} label="Halaman sebelumnya">
-          <ChevronLeft className="size-5" aria-hidden="true" />
-        </PageArrow>
-        <span className="px-2 text-sm font-semibold sm:hidden">
-          {page} dari {pages}
-        </span>
-        <ul className="hidden items-center gap-1.5 sm:flex">
-          {pageList(page, pages).map((p, i) =>
-            p === null ? (
-              <li key={`gap${i}`} className="w-6 text-center text-muted" aria-hidden="true">
-                …
-              </li>
-            ) : (
-              <li key={p}>
-                {p === page ? (
-                  <span aria-current="page" className={cn(square, "border-primary bg-primary text-white")}>
-                    {p}
-                  </span>
-                ) : (
-                  <Link href={buildHref(p)} className={cn(square, "border-line bg-white text-ink hover:border-primary/40 hover:bg-primary-soft")}>
-                    <span className="sr-only">Halaman </span>
-                    {p}
-                  </Link>
-                )}
-              </li>
-            ),
-          )}
-        </ul>
-        <PageArrow href={page < pages ? buildHref(page + 1) : null} label="Halaman berikutnya">
-          <ChevronRight className="size-5" aria-hidden="true" />
-        </PageArrow>
-      </div>
-    </nav>
-  );
-}
-
-function PageArrow({ href, label, children }: { href: string | null; label: string; children: ReactNode }) {
-  const cls = "inline-flex size-10 items-center justify-center rounded-lg border border-line bg-white text-ink";
-  if (!href) {
-    return (
-      <span className={cn(cls, "opacity-40")} aria-disabled="true">
-        {children}
-        <span className="sr-only">{label}</span>
-      </span>
-    );
-  }
-  return (
-    <Link href={href} className={cn(cls, "hover:border-primary/40 hover:bg-primary-soft")}>
-      <LinkPendingIcon icon={children} />
-      <span className="sr-only">{label}</span>
-    </Link>
   );
 }

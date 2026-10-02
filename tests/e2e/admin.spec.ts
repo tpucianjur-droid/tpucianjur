@@ -15,6 +15,35 @@ async function login(page: Page) {
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
+async function expectNoHorizontalOverflow(page: Page) {
+  const result = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    pageWidth: document.documentElement.scrollWidth,
+    tableContainer: (() => {
+      const element = document.querySelector("table")?.parentElement;
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        width: Math.round(rect.width),
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        overflowX: getComputedStyle(element).overflowX,
+      };
+    })(),
+    offenders: Array.from(document.querySelectorAll<HTMLElement>("body *"))
+      .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+      .slice(0, 8)
+      .map((element) => ({
+        tag: element.tagName,
+        className: element.className,
+        right: Math.round(element.getBoundingClientRect().right),
+      })),
+  }));
+  expect(result.pageWidth, JSON.stringify(result)).toBeLessThanOrEqual(result.viewportWidth);
+}
+
 test.describe("Admin", () => {
   test("password salah => pesan sederhana", async ({ page }) => {
     await page.goto("/admin/login");
@@ -34,6 +63,51 @@ test.describe("Admin", () => {
       await expect(page.getByRole("heading", { name: title })).toBeVisible();
     }
     await expect(page.getByText("Aksi Cepat")).toHaveCount(0);
+  });
+
+  test("Data Makam: default responsif dan pilihan Tabel/Grid tersimpan", async ({ page }) => {
+    await login(page);
+    await page.evaluate(() => window.localStorage.removeItem("admin-grave-list-view"));
+
+    await page.setViewportSize({ width: 1366, height: 860 });
+    await page.goto("/admin/makam");
+    const viewChoice = page.getByRole("group", { name: "Tampilan daftar" });
+    const tableButton = viewChoice.getByRole("button", { name: "Tabel" });
+    const gridButton = viewChoice.getByRole("button", { name: "Grid" });
+
+    await expect(tableButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByRole("columnheader")).toHaveText([
+      "Kode",
+      "Nama",
+      "Ahli Waris",
+      "Tanggal Wafat",
+      "Blok",
+      "Nomor",
+      "Status",
+      "Aksi",
+    ]);
+
+    const listUrl = page.url();
+    await gridButton.click();
+    await expect(gridButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("table")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Detail/ }).first()).toBeVisible();
+    await expect(page).toHaveURL(listUrl);
+
+    await page.reload();
+    await expect(gridButton).toHaveAttribute("aria-pressed", "true");
+    await tableButton.click();
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(viewChoice).toHaveCount(0);
+    await expect(page.getByRole("table")).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(tableButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("table")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
   });
 
   test("verifikasi per field: hanya field bermasalah merah, merah hilang setelah ditandai benar & disimpan", async ({ page }, info) => {
