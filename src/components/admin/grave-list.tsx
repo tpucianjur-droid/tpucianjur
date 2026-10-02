@@ -21,7 +21,7 @@ type Props = {
 
 const HEIR_EMPTY = "Belum diisi";
 const VIEW_STORAGE_KEY = "admin-grave-list-view";
-const TABLE_VIEW_QUERY = "(min-width: 1280px), (min-width: 768px) and (orientation: landscape)";
+const TABLE_VIEW_QUERY = "(min-width: 900px)";
 
 type ViewMode = "table" | "grid";
 
@@ -36,7 +36,7 @@ function storedView(): ViewMode | null {
 }
 
 /**
- * Default tabel di desktop/tablet landscape, kartu ringkas di HP/tablet portrait.
+ * Default tabel mulai lebar 900px, kartu ringkas di viewport yang lebih sempit.
  * Preferensi tampilan hanya disimpan di browser dan tidak memengaruhi query/data.
  * Nama/tanggal/ahli waris berwarna merah bila field tersebut perlu dicek.
  */

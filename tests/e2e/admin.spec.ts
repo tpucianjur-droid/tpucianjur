@@ -65,18 +65,29 @@ test.describe("Admin", () => {
     await expect(page.getByText("Aksi Cepat")).toHaveCount(0);
   });
 
-  test("Data Makam: default responsif dan pilihan Tabel/Grid tersimpan", async ({ page }) => {
+  test("Data Makam: default responsif dan pilihan Tabel/Grid tersimpan", async ({ page }, testInfo) => {
     await login(page);
     await page.evaluate(() => window.localStorage.removeItem("admin-grave-list-view"));
 
-    await page.setViewportSize({ width: 1366, height: 860 });
     await page.goto("/admin/makam");
     const viewChoice = page.getByRole("group", { name: "Tampilan daftar" });
     const tableButton = viewChoice.getByRole("button", { name: "Tabel" });
     const gridButton = viewChoice.getByRole("button", { name: "Grid" });
 
-    await expect(tableButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("table")).toBeVisible();
+    for (const viewport of [
+      { width: 1366, height: 860 },
+      { width: 1024, height: 1366 },
+      { width: 987, height: 1200 },
+      { width: 900, height: 1200 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(viewChoice).toBeVisible();
+      await expect(tableButton).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("table")).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`data-makam-${viewport.width}px.png`), fullPage: true });
+    }
+
     await expect(page.getByRole("columnheader")).toHaveText([
       "Kode",
       "Nama",
@@ -99,15 +110,21 @@ test.describe("Admin", () => {
     await expect(gridButton).toHaveAttribute("aria-pressed", "true");
     await tableButton.click();
 
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(viewChoice).toHaveCount(0);
-    await expect(page.getByRole("table")).toHaveCount(0);
-    await expectNoHorizontalOverflow(page);
-
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await expect(tableButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("table")).toBeVisible();
-    await expectNoHorizontalOverflow(page);
+    for (const viewport of [
+      { width: 768, height: 1024 },
+      { width: 412, height: 915 },
+      { width: 390, height: 844 },
+      { width: 320, height: 568 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(viewChoice).toHaveCount(0);
+      await expect(page.getByRole("table")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Detail/ }).first()).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      if (viewport.width === 768 || viewport.width === 412) {
+        await page.screenshot({ path: testInfo.outputPath(`data-makam-${viewport.width}px.png`), fullPage: true });
+      }
+    }
   });
 
   test("verifikasi per field: hanya field bermasalah merah, merah hilang setelah ditandai benar & disimpan", async ({ page }, info) => {
