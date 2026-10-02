@@ -9,7 +9,7 @@ export const APP = {
 
 /** URL unduhan langsung APK Android. */
 export const ANDROID_APP_DOWNLOAD_URL =
-  "https://drive.google.com/uc?export=download&id=1RnVe0-AgDen2fkMn0Dkb58NpSX-1BBJB";
+  "https://drive.usercontent.google.com/download?id=1RnVe0-AgDen2fkMn0Dkb58NpSX-1BBJB&export=download&confirm=t";
 
 /** Alamat & titik Google Maps bawaan TPU (dipakai bila pengaturan lokasi di database belum diisi). */
 export const TPU_ADDRESS = "Tempat Kerja, 548F+PCC, Nagrak, Kec. Cianjur, Kabupaten Cianjur, Jawa Barat 43215";
