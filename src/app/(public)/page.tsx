@@ -1,4 +1,5 @@
-import { BookOpen, Database, Map as MapIcon, MapPin, Search } from "lucide-react";
+import { BookOpen, Database, Map as MapIcon, MapPin, Search, Smartphone } from "lucide-react";
+import { AndroidAppDownloadButton } from "@/components/public/android-app-download-button";
 import { HeroCover } from "@/components/public/responsive-cover";
 import { LocationSection } from "@/components/public/location-map-card";
 import { QuickSearchForm } from "@/components/public/quick-search-form";
@@ -35,9 +36,6 @@ export default async function HomePage() {
             </h1>
             <p className="max-w-lg text-lg text-ink/80">{APP.tagline}</p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <LinkButton href="/cari-makam" size="lg" icon={<Search className="size-5" aria-hidden="true" />}>
-                Cari Makam
-              </LinkButton>
               <LinkButton href="/panduan" size="lg" variant="secondary" icon={<BookOpen className="size-5" aria-hidden="true" />}>
                 Lihat Panduan
               </LinkButton>
@@ -86,6 +84,23 @@ export default async function HomePage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="download-aplikasi" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <Card className="flex flex-col gap-5 border-primary/15 bg-sage p-5 sm:flex-row sm:items-center sm:p-6">
+          <IconBadge tone="primary" className="size-11">
+            <Smartphone className="size-5" />
+          </IconBadge>
+          <div className="min-w-0 flex-1">
+            <h2 id="download-aplikasi" className="font-serif text-xl font-semibold text-ink sm:text-2xl">
+              Download Aplikasi TPU Astana Pratiksha
+            </h2>
+            <p className="mt-1 text-[0.95rem] text-muted">
+              Gunakan aplikasi untuk akses yang lebih cepat dan mudah. Tersedia dalam format APK untuk perangkat Android.
+            </p>
+          </div>
+          <AndroidAppDownloadButton />
+        </Card>
       </section>
 
       <section aria-label="Lokasi TPU" className="border-t border-line/70 bg-white">

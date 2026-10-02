@@ -17,7 +17,12 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur supports-backdrop-filter:bg-white/80">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-18">
+      <div
+        className={cn(
+          "mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-18",
+          pathname === "/" && "max-[340px]:gap-2 max-[340px]:px-2",
+        )}
+      >
         <Logo priority />
 
         <nav aria-label="Menu utama" className="hidden lg:block">
